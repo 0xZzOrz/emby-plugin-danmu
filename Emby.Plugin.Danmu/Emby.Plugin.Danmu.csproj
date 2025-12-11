@@ -7,6 +7,10 @@
     <Nullable>enable</Nullable>
     <AnalysisMode>AllEnabledByDefault</AnalysisMode>
     <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+    <!-- Default Emby Server path - override with /p:EmbyServerPath=... or set environment variable -->
+    <EmbyServerPath Condition="'$(EmbyServerPath)' == ''">$(EMBY_SERVER_PATH)</EmbyServerPath>
+    <EmbyServerPath Condition="'$(EmbyServerPath)' == ''">C:\Program Files\Emby-Server</EmbyServerPath>
+    <EmbyServerPath Condition="'$(EmbyServerPath)' == ''">/opt/emby-server</EmbyServerPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
     <TreatWarningsAsErrors>False</TreatWarningsAsErrors>
@@ -21,11 +25,29 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
-    <PackageReference Include="MediaBrowser.Controller" Version="4.8.0.80" />
-    <PackageReference Include="MediaBrowser.Model" Version="4.8.0.80" />
-    <PackageReference Include="MediaBrowser.Common" Version="4.8.0.80" />
     <PackageReference Include="RateLimiter" Version="2.2.0" />
     <PackageReference Include="SharpZipLib" Version="1.4.2" />
+  </ItemGroup>
+  <ItemGroup Condition="Exists('$(EmbyServerPath)/system/MediaBrowser.Common.dll') Or Exists('$(EmbyServerPath)\system\MediaBrowser.Common.dll')">
+    <!-- Emby Server DLL references - set EmbyServerPath property or EMBY_SERVER_PATH environment variable -->
+    <!-- Windows: C:\Program Files\Emby-Server -->
+    <!-- Linux: /opt/emby-server -->
+    <!-- macOS: /Applications/EmbyServer.app/Contents/MacOS -->
+    <Reference Include="MediaBrowser.Common">
+      <HintPath Condition="'$(OS)' == 'Windows_NT'">$(EmbyServerPath)\system\MediaBrowser.Common.dll</HintPath>
+      <HintPath Condition="'$(OS)' != 'Windows_NT'">$(EmbyServerPath)/system/MediaBrowser.Common.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="MediaBrowser.Controller">
+      <HintPath Condition="'$(OS)' == 'Windows_NT'">$(EmbyServerPath)\system\MediaBrowser.Controller.dll</HintPath>
+      <HintPath Condition="'$(OS)' != 'Windows_NT'">$(EmbyServerPath)/system/MediaBrowser.Controller.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="MediaBrowser.Model">
+      <HintPath Condition="'$(OS)' == 'Windows_NT'">$(EmbyServerPath)\system\MediaBrowser.Model.dll</HintPath>
+      <HintPath Condition="'$(OS)' != 'Windows_NT'">$(EmbyServerPath)/system/MediaBrowser.Model.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="SerilogAnalyzer" Version="0.15.0" PrivateAssets="All" />

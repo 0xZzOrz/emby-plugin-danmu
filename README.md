@@ -1,10 +1,10 @@
-# jellyfin-plugin-danmu
+# emby-plugin-danmu
 
-[![releases](https://img.shields.io/github/v/release/cxfksword/jellyfin-plugin-danmu)](https://github.com/cxfksword/jellyfin-plugin-danmu/releases)
-[![jellyfin](https://img.shields.io/badge/jellyfin-10.10.x|10.11.x-lightgrey?logo=jellyfin)](https://github.com/cxfksword/jellyfin-plugin-danmu/releases)
-[![LICENSE](https://img.shields.io/github/license/cxfksword/jellyfin-plugin-danmu)](https://github.com/cxfksword/jellyfin-plugin-danmu/main/LICENSE) 
+[![releases](https://img.shields.io/github/v/release/cxfksword/emby-plugin-danmu)](https://github.com/cxfksword/emby-plugin-danmu/releases)
+[![emby](https://img.shields.io/badge/emby-10.10.x|10.11.x-lightgrey?logo=emby)](https://github.com/cxfksword/emby-plugin-danmu/releases)
+[![LICENSE](https://img.shields.io/github/license/cxfksword/emby-plugin-danmu)](https://github.com/cxfksword/emby-plugin-danmu/main/LICENSE) 
 
-jellyfin弹幕自动下载插件，已支持的弹幕来源：b站，~~弹弹play~~，优酷，爱奇艺，腾讯视频，芒果TV。
+emby弹幕自动下载插件，已支持的弹幕来源：b站，~~弹弹play~~，优酷，爱奇艺，腾讯视频，芒果TV。
 
 支持功能：
 
@@ -19,11 +19,11 @@ jellyfin弹幕自动下载插件，已支持的弹幕来源：b站，~~弹弹pla
 
 添加插件存储库：
 
-国内加速：https://ghfast.top/https://github.com/cxfksword/jellyfin-plugin-danmu/releases/download/manifest/manifest_cn.json
+国内加速：https://ghfast.top/https://github.com/cxfksword/emby-plugin-danmu/releases/download/manifest/manifest_cn.json
 
-国外访问：https://github.com/cxfksword/jellyfin-plugin-danmu/releases/download/manifest/manifest.json
+国外访问：https://github.com/cxfksword/emby-plugin-danmu/releases/download/manifest/manifest.json
 
-> 如果都无法访问，可以直接从 [Release](https://github.com/cxfksword/jellyfin-plugin-danmu/releases) 页面下载，并解压到 jellyfin 插件目录中使用
+> 如果都无法访问，可以直接从 [Release](https://github.com/cxfksword/emby-plugin-danmu/releases) 页面下载，并解压到 emby 插件目录中使用
 
 > emby 请使用 fengymi 维护的：https://github.com/fengymi/emby-plugin-danmu
 
@@ -39,12 +39,12 @@ jellyfin弹幕自动下载插件，已支持的弹幕来源：b站，~~弹弹pla
 5. 对于电视剧或动画，需要保证每季视频集数一致，并正确填写集号，这样每季视频的弹幕才会自动获取
 6. 同时生成ass弹幕，需要在插件配置中打开，默认是关闭的
   
-> B站电影或季元数据也支持手动指定BV/AV号，来匹配UP主上传的视频弹幕。多P视频和剧集是按顺序一一对应匹配的，所以保证jellyfin中剧集有正确的集号很重要
+> B站电影或季元数据也支持手动指定BV/AV号，来匹配UP主上传的视频弹幕。多P视频和剧集是按顺序一一对应匹配的，所以保证emby中剧集有正确的集号很重要
 
 ## 支持的api接口
 
-* `/api/danmu/{id}`:  获取jellyfin电影或剧集的xml弹幕链接，不存在时，url为空
-* `/api/danmu/{id}/raw`:  获取jellyfin电影或剧集的xml弹幕文件内容
+* `/api/danmu/{id}`:  获取emby电影或剧集的xml弹幕链接，不存在时，url为空
+* `/api/danmu/{id}/raw`:  获取emby电影或剧集的xml弹幕文件内容
 * `/api/v2/search/anime?keyword=xxx`: 根据关键字搜索影视
 * `/api/v2/search/episodes?anime=xxx`: 根据关键字搜索影视的剧集信息
 * `/api/v2/bangumi/{bangumiId}`: 获取影视详细信息
@@ -87,7 +87,7 @@ dotnet publish --configuration=Release Emby.Plugin.Danmu/Emby.Plugin.Danmu.cspro
 
 2. Create a folder, like `danmu` and copy  `./Emby.Plugin.Danmu/bin/Release/net9.0/Emby.Plugin.Danmu.dll` into it
 
-3. Move folder `danmu` to jellyfin `data/plugins` folder
+3. Move folder `danmu` to emby `data/plugins` folder
 
 ## Thanks
 
