@@ -1,0 +1,265 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Net.Http;
+using System.Net.Http.Json;
+using System.Text;
+using System.Text.Json;
+using System.Text.RegularExpressions;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Web;
+using ComposableAsync;
+using Emby.Plugin.Danmu.Core.Extensions;
+using Emby.Plugin.Danmu.Scrapers.Entity;
+using Emby.Plugin.Danmu.Scrapers.Tencent.Entity;
+using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Logging;
+using RateLimiter;
+
+namespace Emby.Plugin.Danmu.Scrapers.Tencent;
+
+public class TencentApi : AbstractApi
+{
+    private TimeLimiter _timeConstraint = TimeLimiter.GetFromMaxCountByInterval(1, TimeSpan.FromMilliseconds(1000));
+    private TimeLimiter _delayExecuteConstraint = TimeLimiter.GetFromMaxCountByInterval(1, TimeSpan.FromMilliseconds(100));
+    private TimeLimiter _delayShortExecuteConstraint = TimeLimiter.GetFromMaxCountByInterval(1, TimeSpan.FromMilliseconds(10));
+
+    // 并行请求配置
+    private const int DefaultParallelCount = 3;
+
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="TencentApi"/> class.
+    /// </summary>
+    /// <param name="loggerFactory">The <see cref="ILoggerFactory"/>.</param>
+    public TencentApi(ILoggerFactory loggerFactory)
+        : base(loggerFactory.CreateLogger<TencentApi>())
+    {
+        httpClient.DefaultRequestHeaders.Add("referer", "https://v.qq.com/");
+        this.AddCookies("pgv_pvid=40b67e3b06027f3d; video_platform=2; vversion_name=8.2.95; video_bucketid=4; video_omgid=0a1ff6bc9407c0b1cff86ee5d359614d", new Uri("https://v.qq.com"));
+    }
+
+
+    public async Task<List<TencentVideo>> SearchAsync(string keyword, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrEmpty(keyword))
+        {
+            return new List<TencentVideo>();
+        }
+
+        var cacheKey = $"search_{keyword}";
+        var expiredOption = new MemoryCacheEntryOptions() { AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(5) };
+        if (_memoryCache.TryGetValue<List<TencentVideo>>(cacheKey, out var cacheValue))
+        {
+            return cacheValue;
+        }
+
+        await this.LimitRequestFrequently();
+
+        var postData = new TencentSearchRequest() { Query = keyword };
+        var url = $"https://pbaccess.video.qq.com/trpc.videosearch.mobile_search.HttpMobileRecall/MbSearchHttp";
+        using var response = await httpClient.PostAsJsonAsync<TencentSearchRequest>(url, postData, cancellationToken).ConfigureAwait(false);
+        response.EnsureSuccessStatusCode();
+
+        var result = new List<TencentVideo>();
+        var searchResult = await response.Content.ReadFromJsonAsync<TencentSearchResult>(_jsonOptions, cancellationToken).ConfigureAwait(false);
+        if (searchResult != null && searchResult.Data != null && searchResult.Data.NormalList != null && searchResult.Data.NormalList.ItemList != null)
+        {
+            foreach (var item in searchResult.Data.NormalList.ItemList)
+            {
+                if (item.VideoInfo.Year == null || item.VideoInfo.Year == 0)
+                {
+                    continue;
+                }
+                if (item.VideoInfo.Title.Distance(keyword) <= 0)
+                {
+                    continue;
+                }
+
+                var video = item.VideoInfo;
+                video.Id = item.Doc.Id;
+                result.Add(video);
+            }
+        }
+
+        _memoryCache.Set<List<TencentVideo>>(cacheKey, result, expiredOption);
+        return result;
+    }
+
+    public async Task<TencentVideo?> GetVideoAsync(string id, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrEmpty(id))
+        {
+            return null;
+        }
+
+        var cacheKey = $"media_{id}";
+        var expiredOption = new MemoryCacheEntryOptions() { AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(30) };
+        if (this._memoryCache.TryGetValue<TencentVideo?>(cacheKey, out var video))
+        {
+            return video;
+        }
+
+        var episodeList = new List<TencentEpisode>();
+        var pageSize = 100;
+        var beginNum = 1;
+        var endNum = pageSize;
+        var nextPageContext = string.Empty;
+        var lastId = string.Empty;
+        do
+        {
+            var postData = new TencentEpisodeListRequest() { PageParams = new TencentPageParams() { Cid = id, PageSize = $"{pageSize}", PageContext = nextPageContext } };
+            var url = "https://pbaccess.video.qq.com/trpc.universal_backend_service.page_server_rpc.PageServer/GetPageData?video_appid=3000010&vplatform=2";
+            using var response = await this.httpClient.PostAsJsonAsync<TencentEpisodeListRequest>(url, postData, cancellationToken).ConfigureAwait(false);
+            response.EnsureSuccessStatusCode();
+
+            nextPageContext = string.Empty;
+            var result = await response.Content.ReadFromJsonAsync<TencentEpisodeListResult>(this._jsonOptions, cancellationToken).ConfigureAwait(false);
+            if (result != null && result.Data != null && result.Data.ModuleListDatas != null
+                && result.Data.ModuleListDatas.First().ModuleDatas != null
+                && result.Data.ModuleListDatas.First().ModuleDatas.First().ItemDataLists != null)
+            {
+                var episodes = result.Data.ModuleListDatas.First().ModuleDatas.First()
+                    .ItemDataLists.ItemDatas.Select(x => x.ItemParams)
+                    .Where(x => x.IsTrailer != "1" && !x.Title.Contains("直拍") && !x.Title.Contains("彩蛋") && !x.Title.Contains("直播回顾"))
+                    .ToList();
+                // 判断下数据是否相同，避免 api 更新导致死循环
+                if (episodes.Count > 0 && episodes.Last().Vid == lastId)
+                {
+                    break;
+                }
+
+                episodeList.AddRange(episodes);
+                if (result.Data.ModuleListDatas.First().ModuleDatas.First().ItemDataLists.ItemDatas.Count == pageSize)
+                {
+                    beginNum += pageSize;
+                    endNum += pageSize;
+                    nextPageContext = $"episode_begin={beginNum}&episode_end={endNum}&episode_step={pageSize}";
+                    lastId = episodeList.Last().Vid;
+
+                    // 等待一段时间避免 api 请求太快
+                    await this._delayExecuteConstraint;
+                }
+            }
+        } while (!string.IsNullOrEmpty(nextPageContext));
+
+        if (episodeList.Count > 0) {
+            var videoInfo = new TencentVideo();
+            videoInfo.Id = id;
+            videoInfo.EpisodeList = episodeList;
+            this._memoryCache.Set<TencentVideo?>(cacheKey, videoInfo, expiredOption);
+            return videoInfo;
+        }
+
+        this._memoryCache.Set<TencentVideo?>(cacheKey, null, expiredOption);
+        return null;
+    }
+
+    public async Task<List<TencentComment>> GetDanmuContentAsync(string vid, CancellationToken cancellationToken, bool isParallel = false)
+    {
+        return await this.GetDanmuContentAsync(vid, isParallel, DefaultParallelCount, cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task<List<TencentComment>> GetDanmuContentAsync(string vid, bool isParallel, int parallelCount, CancellationToken cancellationToken)
+    {
+        var danmuList = new List<TencentComment>();
+        if (string.IsNullOrEmpty(vid))
+        {
+            return danmuList;
+        }
+
+        if (parallelCount <= 0)
+        {
+            parallelCount = DefaultParallelCount;
+        }
+
+        var url = $"https://dm.video.qq.com/barrage/base/{vid}";
+        using var response = await httpClient.GetAsync(url, cancellationToken).ConfigureAwait(false);
+        response.EnsureSuccessStatusCode();
+
+        var result = await response.Content.ReadFromJsonAsync<TencentCommentResult>(_jsonOptions, cancellationToken).ConfigureAwait(false);
+        if (result != null && result.SegmentIndex != null)
+        {
+            var start = result.SegmentStart.ToLong();
+            var size = result.SegmentSpan.ToLong();
+            var segmentKeys = new List<long>();
+            
+            // 收集所有需要下载的分段键
+            for (long i = start; result.SegmentIndex.ContainsKey(i) && size > 0; i += size)
+            {
+                segmentKeys.Add(i);
+            }
+
+            if (isParallel)
+            {
+                // 并行执行
+                var tasks = new List<Task<List<TencentComment>>>();
+                var semaphore = new SemaphoreSlim(parallelCount, parallelCount);
+
+                foreach (var key in segmentKeys)
+                {
+                    await semaphore.WaitAsync(cancellationToken);
+
+                    var task = Task.Run(async () =>
+                    {
+                        try
+                        {
+                            await _delayShortExecuteConstraint;
+                            return await this.GetSegmentDanmuAsync(vid, result.SegmentIndex[key].SegmentName, cancellationToken).ConfigureAwait(false);
+                        }
+                        finally
+                        {
+                            semaphore.Release();
+                        }
+                    }, cancellationToken);
+
+                    tasks.Add(task);
+                }
+
+                var results = await Task.WhenAll(tasks).ConfigureAwait(false);
+                foreach (var comments in results)
+                {
+                    danmuList.AddRange(comments);
+                }
+            }
+            else
+            {
+                // 串行执行
+                foreach (var key in segmentKeys)
+                {
+                    var comments = await this.GetSegmentDanmuAsync(vid, result.SegmentIndex[key].SegmentName, cancellationToken).ConfigureAwait(false);
+                    danmuList.AddRange(comments);
+
+                    // 等待一段时间避免api请求太快
+                    await _delayShortExecuteConstraint;
+                }
+            }
+        }
+
+        return danmuList;
+    }
+
+    private async Task<List<TencentComment>> GetSegmentDanmuAsync(string vid, string segmentName, CancellationToken cancellationToken)
+    {
+        var segmentUrl = $"https://dm.video.qq.com/barrage/segment/{vid}/{segmentName}";
+        using var segmentResponse = await httpClient.GetAsync(segmentUrl, cancellationToken).ConfigureAwait(false);
+        segmentResponse.EnsureSuccessStatusCode();
+
+        var segmentResult = await segmentResponse.Content.ReadFromJsonAsync<TencentCommentSegmentResult>(_jsonOptions, cancellationToken).ConfigureAwait(false);
+        if (segmentResult != null && segmentResult.BarrageList != null)
+        {
+            // 30秒每segment，为避免弹幕太大，从中间隔抽取最大60秒200条弹幕
+            return segmentResult.BarrageList.ExtractToNumber(100).ToList();
+        }
+
+        return new List<TencentComment>();
+    }
+
+    protected async Task LimitRequestFrequently()
+    {
+        await this._timeConstraint;
+    }
+
+}
+
