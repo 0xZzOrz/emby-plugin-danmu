@@ -77,7 +77,7 @@ ass格式：
 
 ```sh
 dotnet restore 
-dotnet publish --configuration=Release Jellyfin.Plugin.Danmu/Jellyfin.Plugin.Danmu.csproj
+dotnet publish --configuration=Release Emby.Plugin.Danmu/Emby.Plugin.Danmu.csproj
 ```
 
 
@@ -85,7 +85,7 @@ dotnet publish --configuration=Release Jellyfin.Plugin.Danmu/Jellyfin.Plugin.Dan
 
 1. Build the plugin
 
-2. Create a folder, like `danmu` and copy  `./Jellyfin.Plugin.Danmu/bin/Release/net9.0/Jellyfin.Plugin.Danmu.dll` into it
+2. Create a folder, like `danmu` and copy  `./Emby.Plugin.Danmu/bin/Release/net9.0/Emby.Plugin.Danmu.dll` into it
 
 3. Move folder `danmu` to jellyfin `data/plugins` folder
 
