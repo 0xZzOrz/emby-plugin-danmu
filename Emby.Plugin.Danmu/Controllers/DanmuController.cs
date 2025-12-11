@@ -346,7 +346,7 @@ namespace Emby.Plugin.Danmu.Controllers
 
             if (item is Series)
             {
-                var seasons = ((Series)item).GetSeasons(null, new DtoOptions(false));
+                var seasons = ((Series)item).GetSeasons(_libraryManager, new DtoOptions(false));
                 foreach (var season in seasons)
                 {
                     _libraryManagerEventsHelper.QueueItem(season, Model.EventType.Add);

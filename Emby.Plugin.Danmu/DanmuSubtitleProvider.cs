@@ -60,11 +60,15 @@ public class DanmuSubtitleProvider : ISubtitleProvider
             // 注意！！：item这里要使用临时对象，假如直接修改原始item的ProviderIds，会导致直接修改原始item数据
             if (item is Movie)
             {
-                item = new Movie() { Id = item.Id, Name = item.Name, ProviderIds = new Dictionary<string, string>() { { scraper.ProviderId, info.Id } } };
+                var movie = new Movie() { Id = item.Id, Name = item.Name };
+                movie.ProviderIds[scraper.ProviderId] = info.Id;
+                item = movie;
             }
             if (item is Episode)
             {
-                item = new Episode() { Id = item.Id, Name = item.Name, ProviderIds = new Dictionary<string, string>() { { scraper.ProviderId, info.Id } } };
+                var episode = new Episode() { Id = item.Id, Name = item.Name };
+                episode.ProviderIds[scraper.ProviderId] = info.Id;
+                item = episode;
             }
 
             _libraryManagerEventsHelper.QueueItem(item, EventType.Force);
@@ -76,7 +80,7 @@ public class DanmuSubtitleProvider : ISubtitleProvider
     public async Task<IEnumerable<RemoteSubtitleInfo>> Search(SubtitleSearchRequest request, CancellationToken cancellationToken)
     {
         var list = new List<RemoteSubtitleInfo>();
-        if (request.IsAutomated || string.IsNullOrEmpty(request.MediaPath))
+        if (string.IsNullOrEmpty(request.MediaPath))
         {
             return list;
         }

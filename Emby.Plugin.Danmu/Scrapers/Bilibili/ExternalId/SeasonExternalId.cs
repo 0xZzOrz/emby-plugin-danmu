@@ -21,7 +21,10 @@ namespace Emby.Plugin.Danmu.Scrapers.Bilibili.ExternalId
         public string Key => Bilibili.ScraperProviderId;
 
         /// <inheritdoc />
-        public ExternalIdMediaType? Type => ExternalIdMediaType.Season;
+        public string Name => Bilibili.ScraperProviderName;
+
+        /// <inheritdoc />
+        public string? UrlFormatString => null;
 
         /// <inheritdoc />
         public bool Supports(IHasProviderIds item) => item is Season;

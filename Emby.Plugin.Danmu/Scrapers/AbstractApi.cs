@@ -3,7 +3,6 @@ using System.Net;
 using System.Net.Http;
 using System.Text.Json;
 using System.Threading;
-using Emby.Extensions.Json;
 using Emby.Plugin.Danmu.Configuration;
 using Emby.Plugin.Danmu.Core.Extensions;
 using Emby.Plugin.Danmu.Core.Http;
@@ -16,7 +15,11 @@ public abstract class AbstractApi : IDisposable
 {
     public const string HTTP_USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/93.0.4577.63 Safari/537.36 Edg/93.0.961.44";
     protected ILogger _logger;
-    protected JsonSerializerOptions _jsonOptions = JsonDefaults.Options;
+    protected System.Text.Json.JsonSerializerOptions _jsonOptions = new System.Text.Json.JsonSerializerOptions
+    {
+        Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+        PropertyNameCaseInsensitive = true
+    };
     protected HttpClient httpClient;
     protected CookieContainer _cookieContainer;
     protected IMemoryCache _memoryCache;

@@ -121,7 +121,7 @@ public class DandanApi : AbstractApi
         {
             ["fileName"] = Path.GetFileNameWithoutExtension(item.Path),
             ["fileHash"] = "00000000000000000000000000000000",
-            ["fileSize"] = item.Size ?? 0,
+            ["fileSize"] = (int)item.Size,
             ["videoDuration"] = (item.RunTimeTicks ?? 0) / 10000000,
             ["matchMode"] = "fileNameOnly",
         };

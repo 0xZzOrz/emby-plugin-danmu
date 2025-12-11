@@ -19,9 +19,13 @@ namespace Emby.Plugin.Danmu.Scrapers.Iqiyi.ExternalId
 
         /// <inheritdoc />
         public string Key => Iqiyi.ScraperProviderId;
+        /// <inheritdoc />
+        public string Name => ProviderName;
 
         /// <inheritdoc />
-        public ExternalIdMediaType? Type => null;
+        public string? UrlFormatString => null;
+
+        /// <inheritdoc />
 
         /// <inheritdoc />
         public bool Supports(IHasProviderIds item) => item is Season;

@@ -20,7 +20,10 @@ namespace Emby.Plugin.Danmu.Scrapers.Bilibili.ExternalId
         public string Key => Bilibili.ScraperProviderId;
 
         /// <inheritdoc />
-        public ExternalIdMediaType? Type => ExternalIdMediaType.Episode;
+        public string Name => Bilibili.ScraperProviderName;
+
+        /// <inheritdoc />
+        public string? UrlFormatString => null;
 
         /// <inheritdoc />
         public bool Supports(IHasProviderIds item) => item is Episode;

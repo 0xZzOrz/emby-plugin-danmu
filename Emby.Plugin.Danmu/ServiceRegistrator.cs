@@ -13,10 +13,16 @@ using Microsoft.Extensions.Logging;
 
 namespace Emby.Plugin.Danmu
 {
-    /// <inheritdoc />
-    public class ServiceRegistrator : IPluginServiceRegistrator
+    /// <summary>
+    /// Service registrator for Emby plugin.
+    /// Note: Emby may use a different service registration mechanism than Jellyfin.
+    /// </summary>
+    public class ServiceRegistrator
     {
-        /// <inheritdoc />
+        /// <summary>
+        /// Register services for the plugin.
+        /// This method should be called by Emby's plugin system.
+        /// </summary>
         public void RegisterServices(IServiceCollection serviceCollection, IServerApplicationHost applicationHost)
         {
             serviceCollection.AddHostedService<PluginStartup>();

@@ -25,25 +25,45 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Core" Version="2.2.5" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="8.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="7.0.1" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="8.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Http" Version="8.0.0" />
+    <PackageReference Include="Microsoft.Extensions.FileSystemGlobbing" Version="8.0.0" />
     <PackageReference Include="RateLimiter" Version="2.2.0" />
     <PackageReference Include="SharpZipLib" Version="1.4.2" />
   </ItemGroup>
-  <ItemGroup Condition="Exists('$(EmbyServerPath)/system/MediaBrowser.Common.dll') Or Exists('$(EmbyServerPath)\system\MediaBrowser.Common.dll')">
-    <!-- Emby Server DLL references - set EmbyServerPath property or EMBY_SERVER_PATH environment variable -->
-    <!-- Windows: C:\Program Files\Emby-Server -->
-    <!-- Linux: /opt/emby-server -->
-    <!-- macOS: /Applications/EmbyServer.app/Contents/MacOS -->
-    <Reference Include="MediaBrowser.Common">
+  <ItemGroup>
+    <!-- Emby Server DLL references - priority: local lib folder > EmbyServerPath > environment variable -->
+    <!-- First try local lib folder (recommended for development) -->
+    <Reference Include="MediaBrowser.Common" Condition="Exists('$(MSBuildThisFileDirectory)lib/emby/MediaBrowser.Common.dll')">
+      <HintPath>$(MSBuildThisFileDirectory)lib/emby/MediaBrowser.Common.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="MediaBrowser.Controller" Condition="Exists('$(MSBuildThisFileDirectory)lib/emby/MediaBrowser.Controller.dll')">
+      <HintPath>$(MSBuildThisFileDirectory)lib/emby/MediaBrowser.Controller.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="MediaBrowser.Model" Condition="Exists('$(MSBuildThisFileDirectory)lib/emby/MediaBrowser.Model.dll')">
+      <HintPath>$(MSBuildThisFileDirectory)lib/emby/MediaBrowser.Model.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+  </ItemGroup>
+  <ItemGroup Condition="!Exists('$(MSBuildThisFileDirectory)lib/emby/MediaBrowser.Common.dll')">
+    <!-- Fallback to Emby Server installation path -->
+    <Reference Include="MediaBrowser.Common" Condition="Exists('$(EmbyServerPath)/system/MediaBrowser.Common.dll') Or Exists('$(EmbyServerPath)\system\MediaBrowser.Common.dll')">
       <HintPath Condition="'$(OS)' == 'Windows_NT'">$(EmbyServerPath)\system\MediaBrowser.Common.dll</HintPath>
       <HintPath Condition="'$(OS)' != 'Windows_NT'">$(EmbyServerPath)/system/MediaBrowser.Common.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="MediaBrowser.Controller">
+    <Reference Include="MediaBrowser.Controller" Condition="Exists('$(EmbyServerPath)/system/MediaBrowser.Controller.dll') Or Exists('$(EmbyServerPath)\system\MediaBrowser.Controller.dll')">
       <HintPath Condition="'$(OS)' == 'Windows_NT'">$(EmbyServerPath)\system\MediaBrowser.Controller.dll</HintPath>
       <HintPath Condition="'$(OS)' != 'Windows_NT'">$(EmbyServerPath)/system/MediaBrowser.Controller.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="MediaBrowser.Model">
+    <Reference Include="MediaBrowser.Model" Condition="Exists('$(EmbyServerPath)/system/MediaBrowser.Model.dll') Or Exists('$(EmbyServerPath)\system\MediaBrowser.Model.dll')">
       <HintPath Condition="'$(OS)' == 'Windows_NT'">$(EmbyServerPath)\system\MediaBrowser.Model.dll</HintPath>
       <HintPath Condition="'$(OS)' != 'Windows_NT'">$(EmbyServerPath)/system/MediaBrowser.Model.dll</HintPath>
       <Private>False</Private>

@@ -18,9 +18,13 @@ namespace Emby.Plugin.Danmu.Scrapers.Youku.ExternalId
 
         /// <inheritdoc />
         public string Key => Youku.ScraperProviderId;
+        /// <inheritdoc />
+        public string Name => ProviderName;
 
         /// <inheritdoc />
-        public ExternalIdMediaType? Type => ExternalIdMediaType.Episode;
+        public string? UrlFormatString => null;
+
+        /// <inheritdoc />
         
         /// <inheritdoc />
         public bool Supports(IHasProviderIds item) => item is Episode;

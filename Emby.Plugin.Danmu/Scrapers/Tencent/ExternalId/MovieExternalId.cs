@@ -18,9 +18,13 @@ namespace Emby.Plugin.Danmu.Scrapers.Tencent.ExternalId
 
         /// <inheritdoc />
         public string Key => Tencent.ScraperProviderId;
+        /// <inheritdoc />
+        public string Name => ProviderName;
 
         /// <inheritdoc />
-        public ExternalIdMediaType? Type => null;
+        public string? UrlFormatString => null;
+
+        /// <inheritdoc />
 
         /// <inheritdoc />
         public bool Supports(IHasProviderIds item) => item is Movie;

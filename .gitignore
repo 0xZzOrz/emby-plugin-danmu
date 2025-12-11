@@ -8,3 +8,5 @@ artifacts
 *.json
 **/.env
 ./history/
+# Emby Server DLL files (should not be committed)
+Emby.Plugin.Danmu/lib/emby/*.dll

@@ -18,9 +18,13 @@ namespace Emby.Plugin.Danmu.Scrapers.Mgtv.ExternalId
 
         /// <inheritdoc />
         public string Key => Mgtv.ScraperProviderId;
+        /// <inheritdoc />
+        public string Name => ProviderName;
 
         /// <inheritdoc />
-        public ExternalIdMediaType? Type => ExternalIdMediaType.Episode;
+        public string? UrlFormatString => null;
+
+        /// <inheritdoc />
 
         /// <inheritdoc />
         public bool Supports(IHasProviderIds item) => item is Episode;

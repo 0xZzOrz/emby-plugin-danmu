@@ -427,8 +427,8 @@ public class LibraryManagerEventsHelper : IDisposable
             {
                 foreach (var item in series)
                 {
-                    var seasons = item.GetSeasons(null, new DtoOptions(false));
-                    foreach (var season in seasons)
+                    var seasons = ((Series)item).GetSeasons(_libraryManager, new DtoOptions(false));
+                    foreach (var season in seasons.ToList())
                     {
                         // 发现season保存元数据，不会推送update事件，这里通过series的update事件推送刷新
                         QueueItem(season, eventType);
@@ -798,8 +798,8 @@ public class LibraryManagerEventsHelper : IDisposable
                     await ForceSaveProviderId(season, scraper.ProviderId, media.Id);
 
                     // 更新所有剧集元数据，GetEpisodes一定要取所有fields，要不然更新会导致重建虚拟season季信息
-                    var episodeList = season.GetEpisodes();
-                    foreach (var (episode, idx) in episodeList.AsEnumerable().Reverse().WithIndex())
+                    var episodeList = season.GetEpisodes().Items;
+                    foreach (var (episode, idx) in episodeList.Reverse().WithIndex())
                     {
                         var fileName = Path.GetFileName(episode.Path);
 
@@ -840,7 +840,7 @@ public class LibraryManagerEventsHelper : IDisposable
 
     private List<BaseItem> GetExistingEpisodes(Season season)
     {
-        var episodes = season.GetEpisodes()
+        var episodes = season.GetEpisodes().Items
             .Where(i => !i.IsVirtualItem)
             .ToList();
         // 不处理季文件夹下的特典和extras影片（动画经常会混在一起）
@@ -880,7 +880,7 @@ public class LibraryManagerEventsHelper : IDisposable
                     item.ProviderIds[pair.Key] = pair.Value;
                 }
 
-                _itemRepository.SaveItems(new[] { item }, CancellationToken.None);
+                _itemRepository.SaveItems(new List<BaseItem> { item }, CancellationToken.None);
             }
         }
         _logger.LogInformation("更新epid到元数据完成。item数：{0}", queue.Count);
@@ -1001,7 +1001,7 @@ public class LibraryManagerEventsHelper : IDisposable
         // 保存指定弹幕元数据
         item.ProviderIds[providerId] = providerVal;
 
-        _itemRepository.SaveItems(new[] { item }, CancellationToken.None);
+        _itemRepository.SaveItems(new List<BaseItem> { item }, CancellationToken.None);
     }
 
 

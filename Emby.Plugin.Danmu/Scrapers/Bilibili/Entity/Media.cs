@@ -6,7 +6,6 @@ using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Emby.Plugin.Danmu.Core.Extensions;
-using Microsoft.Extensions.FileSystemGlobbing.Internal;
 
 namespace Emby.Plugin.Danmu.Scrapers.Bilibili.Entity
 {

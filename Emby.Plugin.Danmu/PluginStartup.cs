@@ -34,13 +34,11 @@ namespace Emby.Plugin.Danmu
         /// </summary>
         /// <param name="libraryManager">The <see cref="ILibraryManager"/>.</param>
         /// <param name="loggerFactory">The <see cref="ILoggerFactory"/>.</param>
-        /// <param name="httpClientFactory">The <see cref="IHttpClientFactory"/>.</param>
         /// <param name="fileSystem">Instance of the <see cref="IFileSystem"/> interface.</param>
         /// <param name="appHost">The <see cref="IServerApplicationHost"/>.</param>
         public PluginStartup(
             ILibraryManager libraryManager,
             ILoggerFactory loggerFactory,
-            IHttpClientFactory httpClientFactory,
             LibraryManagerEventsHelper libraryManagerEventsHelper,
             IFileSystem fileSystem,
             IServerApplicationHost appHost)

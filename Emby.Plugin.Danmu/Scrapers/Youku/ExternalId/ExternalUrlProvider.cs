@@ -6,13 +6,14 @@ using MediaBrowser.Controller.Entities.Movies;
 using MediaBrowser.Controller.Entities.TV;
 using MediaBrowser.Controller.Providers;
 using MediaBrowser.Model.Entities;
+using Emby.Plugin.Danmu.Core.Extensions;
 
 namespace Emby.Plugin.Danmu.Scrapers.Youku.ExternalId;
 
 /// <summary>
 /// External URLs for Danmu.
 /// </summary>
-public class ExternalUrlProvider : IExternalUrlProvider
+public class ExternalUrlProvider 
 {
     /// <inheritdoc/>
     public string Name => Youku.ScraperProviderName;

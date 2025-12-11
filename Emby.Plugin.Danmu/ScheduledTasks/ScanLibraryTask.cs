@@ -6,7 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Emby.Data.Enums;
+using MediaBrowser.Model.Entities;
 using Emby.Plugin.Danmu.Core.Extensions;
 using Emby.Plugin.Danmu.Model;
 using Emby.Plugin.Danmu.Scrapers;
@@ -54,7 +54,7 @@ namespace Emby.Plugin.Danmu.ScheduledTasks
             return new List<TaskTriggerInfo>();
         }
 
-        public async Task ExecuteAsync(IProgress<double> progress, CancellationToken cancellationToken)
+        public async Task Execute(CancellationToken cancellationToken, IProgress<double> progress)
         {
             await Task.Yield();
 
@@ -65,7 +65,7 @@ namespace Emby.Plugin.Danmu.ScheduledTasks
             {
                 // MediaTypes = new[] { MediaType.Video },
                 ExcludeProviderIds = this.GetScraperFilter(scrapers),
-                IncludeItemTypes = new[] { BaseItemKind.Movie, BaseItemKind.Season }
+                IncludeItemTypes = new[] { "Movie", "Season" }
             }).ToList();
 
             _logger.LogInformation("Scan danmu for {0} videos.", items.Count);
@@ -140,12 +140,12 @@ namespace Emby.Plugin.Danmu.ScheduledTasks
             return false;
         }
 
-        private Dictionary<string, string> GetScraperFilter(ReadOnlyCollection<AbstractScraper> scrapers)
+        private ProviderIdDictionary GetScraperFilter(ReadOnlyCollection<AbstractScraper> scrapers)
         {
-            var filter = new Dictionary<string, string>();
+            var filter = new ProviderIdDictionary();
             foreach (var scraper in scrapers)
             {
-                filter.Add(scraper.ProviderId, string.Empty);
+                filter[scraper.ProviderId] = string.Empty;
             }
 
             return filter;
