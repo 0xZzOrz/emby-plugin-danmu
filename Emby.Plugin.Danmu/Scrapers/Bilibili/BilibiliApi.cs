@@ -12,7 +12,7 @@ using Emby.Plugin.Danmu.Core.Extensions;
 using Emby.Plugin.Danmu.Scrapers.Bilibili.Entity;
 using Emby.Plugin.Danmu.Scrapers.Entity;
 using Microsoft.Extensions.Caching.Memory;
-using Microsoft.Extensions.Logging;
+using MediaBrowser.Model.Logging;
 
 
 namespace Emby.Plugin.Danmu.Scrapers.Bilibili;
@@ -29,9 +29,9 @@ public class BilibiliApi : AbstractApi
     /// <summary>
     /// Initializes a new instance of the <see cref="BilibiliApi"/> class.
     /// </summary>
-    /// <param name="loggerFactory">The <see cref="ILoggerFactory"/>.</param>
-    public BilibiliApi(ILoggerFactory loggerFactory)
-        : base(loggerFactory.CreateLogger<BilibiliApi>())
+    /// <param name="loggerFactory">The <see cref="ILogManager"/>.</param>
+    public BilibiliApi(ILogManager loggerFactory)
+        : base(loggerFactory.GetLogger(typeof(BilibiliApi).Name))
     {
         httpClient.DefaultRequestHeaders.Add("Referer", "https://www.bilibili.com/");
     }

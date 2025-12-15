@@ -7,7 +7,7 @@ using Emby.Plugin.Danmu.Configuration;
 using Emby.Plugin.Danmu.Core.Extensions;
 using Emby.Plugin.Danmu.Core.Http;
 using Microsoft.Extensions.Caching.Memory;
-using Microsoft.Extensions.Logging;
+using MediaBrowser.Model.Logging;
 
 namespace Emby.Plugin.Danmu.Scrapers;
 
@@ -15,10 +15,10 @@ public abstract class AbstractApi : IDisposable
 {
     public const string HTTP_USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/93.0.4577.63 Safari/537.36 Edg/93.0.961.44";
     protected ILogger _logger;
-    protected System.Text.Json.JsonSerializerOptions _jsonOptions = new System.Text.Json.JsonSerializerOptions
+    protected JsonSerializerOptions _jsonOptions = new JsonSerializerOptions
     {
-        Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
-        PropertyNameCaseInsensitive = true
+        PropertyNameCaseInsensitive = true,
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
     };
     protected HttpClient httpClient;
     protected CookieContainer _cookieContainer;

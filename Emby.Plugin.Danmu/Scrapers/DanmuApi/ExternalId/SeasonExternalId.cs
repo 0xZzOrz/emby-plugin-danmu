@@ -9,15 +9,12 @@ namespace Emby.Plugin.Danmu.Scrapers.DanmuApi.ExternalId
     public class SeasonExternalId : IExternalId
     {
         /// <inheritdoc />
-        public string ProviderName => DanmuApi.ScraperProviderName;
+        public string Name => DanmuApi.ScraperProviderName;
 
         /// <inheritdoc />
         public string Key => DanmuApi.ScraperProviderId;
         /// <inheritdoc />
-        public string Name => ProviderName;
-
-        /// <inheritdoc />
-        public string? UrlFormatString => null;
+        public string UrlFormatString => "https://example.com/season/{0}";
 
         /// <inheritdoc />
 

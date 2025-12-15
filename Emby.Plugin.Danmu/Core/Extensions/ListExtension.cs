@@ -1,8 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Emby.Plugin.Danmu.Core.Extensions
 {
@@ -16,7 +14,6 @@ namespace Emby.Plugin.Danmu.Core.Extensions
         /// </summary>
         public static IEnumerable<T> ExtractToNumber<T>(this IEnumerable<T> self, int limit)
         {
-
             var count = self.Count();
             var step = (int)Math.Ceiling((double)count / limit);
             var list = new List<T>();
@@ -30,9 +27,8 @@ namespace Emby.Plugin.Danmu.Core.Extensions
                 list.Add(self.ElementAt(idx));
                 idx += step;
             }
-
             return list;
         }
-
     }
 }
+

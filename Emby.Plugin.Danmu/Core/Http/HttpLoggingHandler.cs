@@ -1,4 +1,5 @@
 using System;
+using Emby.Plugin.Danmu.Core.Extensions;
 using System.Diagnostics.CodeAnalysis;
 using System.Net.Http;
 using System.Text;

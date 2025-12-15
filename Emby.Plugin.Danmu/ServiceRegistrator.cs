@@ -1,47 +1,66 @@
 using System;
-using Emby.Plugin.Danmu.Controllers.Entity;
 using Emby.Plugin.Danmu.Core;
+using Emby.Plugin.Danmu.Core.Extensions;
 using Emby.Plugin.Danmu.Scrapers;
+using MediaBrowser.Common;
 using MediaBrowser.Common.Configuration;
-using MediaBrowser.Controller;
 using MediaBrowser.Controller.Library;
-using MediaBrowser.Controller.Persistence;
 using MediaBrowser.Controller.Plugins;
 using MediaBrowser.Controller.Subtitles;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
+using MediaBrowser.Model.Logging;
+using MediaBrowser.Model.Serialization;
 
 namespace Emby.Plugin.Danmu
 {
     /// <summary>
     /// Service registrator for Emby plugin.
-    /// Note: Emby may use a different service registration mechanism than Jellyfin.
     /// </summary>
-    public class ServiceRegistrator
+    public class ServiceRegistrator : IServerEntryPoint
     {
-        /// <summary>
-        /// Register services for the plugin.
-        /// This method should be called by Emby's plugin system.
-        /// </summary>
-        public void RegisterServices(IServiceCollection serviceCollection, IServerApplicationHost applicationHost)
-        {
-            serviceCollection.AddHostedService<PluginStartup>();
+        private readonly ILogManager _logManager;
+        private readonly ILogger _logger;
+        private readonly IJsonSerializer _jsonSerializer;
+        private readonly IApplicationHost _applicationHost;
+        private PluginStartup _pluginStartup;
 
-            serviceCollection.AddSingleton<ISubtitleProvider, DanmuSubtitleProvider>();
-            serviceCollection.AddSingleton<IFileSystem>(_ => new FileSystem());
-            serviceCollection.AddSingleton((ctx) =>
-            {
-                return new ScraperManager(ctx.GetRequiredService<ILoggerFactory>());
-            });
-            serviceCollection.AddSingleton((ctx) =>
-            {
-                return new LibraryManagerEventsHelper(ctx.GetRequiredService<IItemRepository>(), ctx.GetRequiredService<ILibraryManager>(), ctx.GetRequiredService<ILoggerFactory>(), ctx.GetRequiredService<IFileSystem>(), ctx.GetRequiredService<ScraperManager>());
-            });
-            serviceCollection.AddSingleton<FileCache<AnimeCacheItem>>((ctx) =>
-            {
-                var applicationPaths = ctx.GetRequiredService<IApplicationPaths>();
-                return new FileCache<AnimeCacheItem>(applicationPaths, ctx.GetRequiredService<ILoggerFactory>(),TimeSpan.FromDays(31), TimeSpan.FromSeconds(60));
-            });
+        public ServiceRegistrator(
+            ILogManager logManager,
+            IJsonSerializer jsonSerializer,
+            IApplicationHost applicationHost,
+            ILibraryManager libraryManager,
+            ScraperManager scraperManager)
+        {
+            _logManager = logManager;
+            _jsonSerializer = jsonSerializer;
+            _applicationHost = applicationHost;
+            _logger = logManager.GetLogger(GetType().Name);
+            
+            // Initialize JsonExtension
+            JsonExtension.Initialize(jsonSerializer);
+            
+            // Initialize SingletonManager
+            Core.SingletonManager.ScraperManager = scraperManager;
+            Core.SingletonManager.JsonSerializer = jsonSerializer;
+            Core.SingletonManager.LogManager = logManager;
+            Core.SingletonManager.applicationHost = applicationHost;
+            
+            // Create LibraryManagerEventsHelper instance
+            var libraryManagerEventsHelper = new LibraryManagerEventsHelper(libraryManager, logManager, scraperManager);
+            Core.SingletonManager.LibraryManagerEventsHelper = libraryManagerEventsHelper;
+            
+            // Create and start PluginStartup
+            _pluginStartup = new PluginStartup(libraryManager, logManager, libraryManagerEventsHelper);
+        }
+
+        public void Run()
+        {
+            _logger.Info("Danmu 插件服务注册完成");
+            _pluginStartup.Start();
+        }
+
+        public void Dispose()
+        {
+            _pluginStartup?.Dispose();
         }
     }
 }

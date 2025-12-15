@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Jellyfin.Plugin.Danmu.Core.Danmaku2Ass
+namespace Emby.Plugin.Danmu.Core.Danmaku2Ass
 {
     public enum DanmakuLayoutAlgorithm
     {

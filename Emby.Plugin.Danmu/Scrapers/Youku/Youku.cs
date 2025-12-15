@@ -3,7 +3,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using MediaBrowser.Controller.Entities;
-using Microsoft.Extensions.Logging;
+using MediaBrowser.Model.Logging;
 using Emby.Plugin.Danmu.Scrapers.Entity;
 using System.Collections.Generic;
 using Emby.Plugin.Danmu.Core.Extensions;
@@ -19,8 +19,8 @@ public class Youku : AbstractScraper
 
     private readonly YoukuApi _api;
 
-    public Youku(ILoggerFactory logManager)
-        : base(logManager.CreateLogger<Youku>())
+    public Youku(ILogManager logManager)
+        : base(logManager.GetLogger(typeof(Youku).Name))
     {
         _api = new YoukuApi(logManager);
     }
@@ -112,7 +112,7 @@ public class Youku : AbstractScraper
             var itemPubYear = item.ProductionYear ?? 0;
             if (itemPubYear > 0 && pubYear > 0 && itemPubYear != pubYear)
             {
-                log.LogDebug("[{0}] 发行年份不一致，忽略处理. Youku：{1} emby: {2}", title, pubYear, itemPubYear);
+                log.LogDebug("[{0}] 发行年份不一致，忽略处理. Youku：{1} jellyfin: {2}", title, pubYear, itemPubYear);
                 continue;
             }
 
@@ -148,7 +148,7 @@ public class Youku : AbstractScraper
             }
         }
 
-        // 优酷的id包括非法的=符号，会导致emby自动删除，这里做下encode
+        // 优酷的id包括非法的=符号，会导致jellyfin自动删除，这里做下encode
         if (isMovieItemType)
         {
             media.Id = HttpUtility.UrlEncode(media.Episodes.Count > 0 ? $"{media.Episodes[0].Id}" : "");
@@ -262,7 +262,7 @@ public class Youku : AbstractScraper
             }
             catch (Exception ex)
             {
-                log.LogWarning(ex, "Failed to parse comment: {CommentId}", comment.ID);
+                log.LogWarning("Failed to parse comment: {0}, Exception: {1}", comment.ID, ex.Message);
             }
         }
 

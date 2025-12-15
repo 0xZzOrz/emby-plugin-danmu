@@ -2,7 +2,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using MediaBrowser.Controller.Entities;
-using Microsoft.Extensions.Logging;
+using MediaBrowser.Model.Logging;
 using Emby.Plugin.Danmu.Scrapers.Entity;
 using System.Collections.Generic;
 using Emby.Plugin.Danmu.Core.Extensions;
@@ -17,8 +17,8 @@ public class Tencent : AbstractScraper
 
     private readonly TencentApi _api;
 
-    public Tencent(ILoggerFactory logManager)
-        : base(logManager.CreateLogger<Tencent>())
+    public Tencent(ILogManager logManager)
+        : base(logManager.GetLogger(typeof(Tencent).Name))
     {
         _api = new TencentApi(logManager);
     }
@@ -112,7 +112,7 @@ public class Tencent : AbstractScraper
             var itemPubYear = item.ProductionYear ?? 0;
             if (itemPubYear > 0 && pubYear > 0 && itemPubYear != pubYear)
             {
-                log.LogDebug("[{0}] 发行年份不一致，忽略处理. year: {1} emby: {2}", title, pubYear, itemPubYear);
+                log.LogDebug("[{0}] 发行年份不一致，忽略处理. year: {1} jellyfin: {2}", title, pubYear, itemPubYear);
                 continue;
             }
 

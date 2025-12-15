@@ -1,8 +1,8 @@
-using System.Text.Json.Serialization;
-
-public class DanmuFileInfo
+namespace Emby.Plugin.Danmu.Model
 {
-    [JsonPropertyName("url")]
-    public string Url { get; set; } = string.Empty;
-
+    public class DanmuFileInfo
+    {
+        public string Url { get; set; } = string.Empty;
+    }
 }
+

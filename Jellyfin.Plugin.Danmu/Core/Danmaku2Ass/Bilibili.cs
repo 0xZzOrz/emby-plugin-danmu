@@ -1,4 +1,4 @@
-﻿using Jellyfin.Plugin.Danmu.Core.Danmaku2Ass;
+﻿using Emby.Plugin.Danmu.Core.Danmaku2Ass;
 using System;
 using System.Collections.Generic;
 using System.IO;

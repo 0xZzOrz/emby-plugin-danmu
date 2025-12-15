@@ -14,15 +14,12 @@ namespace Emby.Plugin.Danmu.Scrapers.Youku.ExternalId
     public class EpisodeExternalId : IExternalId
     {
         /// <inheritdoc />
-        public string ProviderName => Youku.ScraperProviderName;
+        public string Name => Youku.ScraperProviderName;
 
         /// <inheritdoc />
         public string Key => Youku.ScraperProviderId;
         /// <inheritdoc />
-        public string Name => ProviderName;
-
-        /// <inheritdoc />
-        public string? UrlFormatString => null;
+        public string UrlFormatString => "https://example.com/episode/{0}";
 
         /// <inheritdoc />
         

@@ -2,7 +2,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using MediaBrowser.Controller.Entities;
-using Microsoft.Extensions.Logging;
+using MediaBrowser.Model.Logging;
 using Emby.Plugin.Danmu.Scrapers.Entity;
 using System.Collections.Generic;
 using Emby.Plugin.Danmu.Core.Extensions;
@@ -16,8 +16,8 @@ public class Iqiyi : AbstractScraper
 
     private readonly IqiyiApi _api;
 
-    public Iqiyi(ILoggerFactory logManager)
-        : base(logManager.CreateLogger<Iqiyi>())
+    public Iqiyi(ILogManager logManager)
+        : base(logManager.GetLogger(typeof(Iqiyi).Name))
     {
         _api = new IqiyiApi(logManager);
     }
@@ -98,7 +98,7 @@ public class Iqiyi : AbstractScraper
             var itemPubYear = item.ProductionYear ?? 0;
             if (itemPubYear > 0 && pubYear > 0 && itemPubYear != pubYear)
             {
-                log.LogDebug("[{0}] 发行年份不一致，忽略处理. Iqiyi：{1} emby: {2}", title, pubYear, itemPubYear);
+                log.LogDebug("[{0}] 发行年份不一致，忽略处理. Iqiyi：{1} jellyfin: {2}", title, pubYear, itemPubYear);
                 continue;
             }
 

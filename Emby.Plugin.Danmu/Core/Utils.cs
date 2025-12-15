@@ -1,8 +1,5 @@
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using MediaBrowser.Model.Logging;
 
 namespace Emby.Plugin.Danmu.Core
 {
@@ -21,3 +18,4 @@ namespace Emby.Plugin.Danmu.Core
         }
     }
 }
+

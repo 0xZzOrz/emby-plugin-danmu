@@ -1,39 +1,56 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Text.Json;
+using System;
+using System.IO;
 using System.Threading.Tasks;
+using MediaBrowser.Model.Serialization;
 
 namespace Emby.Plugin.Danmu.Core.Extensions
 {
     public static class JsonExtension
     {
+        private static IJsonSerializer _jsonSerializer;
+
+        public static void Initialize(IJsonSerializer jsonSerializer)
+        {
+            _jsonSerializer = jsonSerializer;
+        }
+
         public static string ToJson(this object obj)
         {
             if (obj == null) return string.Empty;
-
-            // 不指定UnsafeRelaxedJsonEscaping，+号会被转码为unicode字符，和js/java的序列化不一致
-            var jso = new JsonSerializerOptions();
-            jso.Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping;
-            return JsonSerializer.Serialize(obj, jso);
+            if (_jsonSerializer == null)
+            {
+                throw new InvalidOperationException("JsonExtension not initialized. Call Initialize first.");
+            }
+            
+            return _jsonSerializer.SerializeToString(obj);
         }
 
-        public static T? FromJson<T>(this string str)
+        public static Task<T> ReadFromJsonAsync<T>(this Stream content)
         {
-            if (string.IsNullOrEmpty(str)) return default(T?);
+            if (_jsonSerializer == null)
+            {
+                throw new InvalidOperationException("JsonExtension not initialized. Call Initialize first.");
+            }
+            return _jsonSerializer.DeserializeFromStreamAsync<T>(content);
+        }
 
-            // 不指定UnsafeRelaxedJsonEscaping，+号会被转码为unicode字符，和js/java的序列化不一致
-            var jso = new JsonSerializerOptions();
-            jso.Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping;
+        public static T FromJson<T>(this string str)
+        {
+            if (string.IsNullOrEmpty(str)) return default(T);
+            if (_jsonSerializer == null)
+            {
+                throw new InvalidOperationException("JsonExtension not initialized. Call Initialize first.");
+            }
+
             try
             {
-                return JsonSerializer.Deserialize<T>(str, jso);
+                return _jsonSerializer.DeserializeFromString<T>(str);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return default(T?);
+                return default(T);
             }
         }
     }
 }
+

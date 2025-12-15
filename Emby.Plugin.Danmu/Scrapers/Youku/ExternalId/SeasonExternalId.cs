@@ -15,16 +15,15 @@ namespace Emby.Plugin.Danmu.Scrapers.Youku.ExternalId
     public class SeasonExternalId : IExternalId
     {
         /// <inheritdoc />
-        public string ProviderName => Youku.ScraperProviderName;
+        public string Name => Youku.ScraperProviderName;
 
         /// <inheritdoc />
         public string Key => Youku.ScraperProviderId;
 
         /// <inheritdoc />
-        public string Name => Youku.ScraperProviderName;
 
         /// <inheritdoc />
-        public string? UrlFormatString => "https://v.youku.com/v_nextstage/id_{0}.html";
+        public string UrlFormatString => "https://v.youku.com/v_nextstage/id_{0}.html";
 
         /// <inheritdoc />
         public bool Supports(IHasProviderIds item) => item is Season;

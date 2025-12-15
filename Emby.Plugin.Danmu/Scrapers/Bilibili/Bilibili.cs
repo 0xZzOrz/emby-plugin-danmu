@@ -5,10 +5,11 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Xml;
+using Emby.Plugin.Danmu.Core;
 using Emby.Plugin.Danmu.Core.Extensions;
 using Emby.Plugin.Danmu.Scrapers.Entity;
 using MediaBrowser.Controller.Entities;
-using Microsoft.Extensions.Logging;
+using MediaBrowser.Model.Logging;
 
 
 namespace Emby.Plugin.Danmu.Scrapers.Bilibili;
@@ -20,8 +21,8 @@ public class Bilibili : AbstractScraper
 
     private readonly BilibiliApi _api;
 
-    public Bilibili(ILoggerFactory logManager)
-        : base(logManager.CreateLogger<Bilibili>())
+    public Bilibili(ILogManager logManager)
+        : base(logManager.GetLogger(typeof(Bilibili).Name))
     {
         _api = new BilibiliApi(logManager);
     }
@@ -377,14 +378,14 @@ public class Bilibili : AbstractScraper
                     var itemPubYear = item.ProductionYear ?? 0;
                     if (itemPubYear > 0 && pubYear > 0 && itemPubYear != pubYear)
                     {
-                        log.LogDebug("[{0}] 发行年份不一致，忽略处理. b站：{1} emby: {2}", title, pubYear, itemPubYear);
+                        log.LogDebug("[{0}] 发行年份不一致，忽略处理. b站：{1} jellyfin: {2}", title, pubYear, itemPubYear);
                         continue;
                     }
 
                     // 季匹配处理，没有year但有season_number时，判断后缀是否有对应的第几季，如孤独的美食家
                     if (isSeasonItemType && itemPubYear == 0 && item.IndexNumber != null && item.IndexNumber.Value > 1 && media.SeasonNumber != item.IndexNumber)
                     {
-                        log.LogDebug("[{0}] 季号不一致，忽略处理. b站：{1} emby: {2}", title, media.SeasonNumber, item.IndexNumber);
+                        log.LogDebug("[{0}] 季号不一致，忽略处理. b站：{1} jellyfin: {2}", title, media.SeasonNumber, item.IndexNumber);
                         continue;
                     }
 

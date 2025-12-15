@@ -15,17 +15,13 @@ namespace Emby.Plugin.Danmu.Scrapers.Dandan.ExternalId
     public class SeasonExternalId : IExternalId
     {
         /// <inheritdoc />
-        public string ProviderName => Dandan.ScraperProviderName;
+        public string Name => Dandan.ScraperProviderName;
 
         /// <inheritdoc />
         public string Key => Dandan.ScraperProviderId;
-        /// <inheritdoc />
-        public string Name => ProviderName;
 
         /// <inheritdoc />
-        public string? UrlFormatString => null;
-
-        /// <inheritdoc />
+        public string UrlFormatString => "https://api.dandanplay.net/api/v2/bangumi/{0}";
 
         /// <inheritdoc />
         public bool Supports(IHasProviderIds item) => item is Season;

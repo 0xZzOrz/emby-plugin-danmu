@@ -1,4 +1,4 @@
-﻿namespace Jellyfin.Plugin.Danmu.Core.Danmaku2Ass
+﻿namespace Emby.Plugin.Danmu.Core.Danmaku2Ass
 {
     public class BiliDanmaku
     {

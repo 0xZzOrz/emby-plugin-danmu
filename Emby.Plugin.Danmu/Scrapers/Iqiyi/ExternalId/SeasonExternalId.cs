@@ -15,15 +15,12 @@ namespace Emby.Plugin.Danmu.Scrapers.Iqiyi.ExternalId
     public class SeasonExternalId : IExternalId
     {
         /// <inheritdoc />
-        public string ProviderName => Iqiyi.ScraperProviderName;
+        public string Name => Iqiyi.ScraperProviderName;
 
         /// <inheritdoc />
         public string Key => Iqiyi.ScraperProviderId;
         /// <inheritdoc />
-        public string Name => ProviderName;
-
-        /// <inheritdoc />
-        public string? UrlFormatString => null;
+        public string UrlFormatString => "https://example.com/season/{0}";
 
         /// <inheritdoc />
 

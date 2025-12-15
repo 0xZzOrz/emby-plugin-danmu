@@ -11,10 +11,9 @@ using MediaBrowser.Controller.Entities;
 using MediaBrowser.Controller.Entities.Movies;
 using MediaBrowser.Controller.Entities.TV;
 using MediaBrowser.Controller.Library;
-using MediaBrowser.Controller.Persistence;
 using MediaBrowser.Model.Entities;
 using MediaBrowser.Model.IO;
-using Microsoft.Extensions.Logging;
+using MediaBrowser.Model.Logging;
 using Microsoft.Extensions.Caching.Memory;
 using Emby.Plugin.Danmu.Scrapers;
 using Emby.Plugin.Danmu.Core.Extensions;
@@ -28,9 +27,8 @@ public class LibraryManagerEventsHelper : IDisposable
     private readonly IMemoryCache _memoryCache;
     private readonly MemoryCacheEntryOptions _pendingAddExpiredOption = new MemoryCacheEntryOptions() { AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(30) };
     private readonly MemoryCacheEntryOptions _danmuUpdatedExpiredOption = new MemoryCacheEntryOptions() { AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(5) };
-    private readonly IItemRepository _itemRepository;
     private readonly ILibraryManager _libraryManager;
-    private readonly ILogger<LibraryManagerEventsHelper> _logger;
+    private readonly ILogger _logger;
     private readonly Emby.Plugin.Danmu.Core.IFileSystem _fileSystem;
     private Timer _queueTimer;
     private readonly ScraperManager _scraperManager;
@@ -48,18 +46,16 @@ public class LibraryManagerEventsHelper : IDisposable
     /// Initializes a new instance of the <see cref="LibraryManagerEventsHelper"/> class.
     /// </summary>
     /// <param name="libraryManager">The <see cref="ILibraryManager"/>.</param>
-    /// <param name="loggerFactory">The <see cref="ILoggerFactory"/>.</param>
-    /// <param name="api">The <see cref="BilibiliApi"/>.</param>
-    /// <param name="fileSystem">Instance of the <see cref="IFileSystem"/> interface.</param>
-    public LibraryManagerEventsHelper(IItemRepository itemRepository, ILibraryManager libraryManager, ILoggerFactory loggerFactory, Emby.Plugin.Danmu.Core.IFileSystem fileSystem, ScraperManager scraperManager)
+    /// <param name="logManager">The <see cref="ILogManager"/>.</param>
+    /// <param name="scraperManager">The <see cref="ScraperManager"/>.</param>
+    public LibraryManagerEventsHelper(ILibraryManager libraryManager, ILogManager logManager, ScraperManager scraperManager)
     {
         _queuedEvents = new List<LibraryEvent>();
         _memoryCache = new MemoryCache(new MemoryCacheOptions());
 
-        _itemRepository = itemRepository;
         _libraryManager = libraryManager;
-        _logger = loggerFactory.CreateLogger<LibraryManagerEventsHelper>();
-        _fileSystem = fileSystem;
+        _logger = logManager.GetLogger(GetType().Name);
+        _fileSystem = Core.FileSystem.instant;
         _scraperManager = scraperManager;
     }
 
@@ -82,7 +78,7 @@ public class LibraryManagerEventsHelper : IDisposable
             // 检查队列中是否已存在相同的事件
             if (_queuedEvents.Contains(libraryEvent))
             {
-                _logger.LogDebug("事件已在队列中,忽略重复添加: {ItemName} ({EventType})", item.Name, eventType);
+                _logger.Debug("事件已在队列中,忽略重复添加: {ItemName} ({EventType})", item.Name, eventType);
                 return;
             }
 
@@ -114,7 +110,7 @@ public class LibraryManagerEventsHelper : IDisposable
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error in OnQueueTimerCallbackInternal");
+            _logger.LogErrorException("Error in OnQueueTimerCallbackInternal", ex);
         }
     }
 
@@ -123,14 +119,14 @@ public class LibraryManagerEventsHelper : IDisposable
     /// </summary>
     private async Task OnQueueTimerCallbackInternal()
     {
-        // _logger.LogInformation("Timer elapsed - processing queued items");
+        // _logger.Info("Timer elapsed - processing queued items");
         List<LibraryEvent> queue;
 
         lock (_queuedEvents)
         {
             if (!_queuedEvents.Any())
             {
-                _logger.LogInformation("No events... stopping queue timer");
+                _logger.Info("No events... stopping queue timer");
                 return;
             }
 
@@ -163,11 +159,11 @@ public class LibraryManagerEventsHelper : IDisposable
             switch (ev.Item)
             {
                 case Movie when ev.EventType is EventType.Add:
-                    _logger.LogInformation("Movie add: {0}", ev.Item.Name);
+                    _logger.Info("Movie add: {0}", ev.Item.Name);
                     _memoryCache.Set<LibraryEvent>(ev.Item.Id, ev, _pendingAddExpiredOption);
                     break;
                 case Movie when ev.EventType is EventType.Update:
-                    _logger.LogInformation("Movie update: {0}", ev.Item.Name);
+                    _logger.Info("Movie update: {0}", ev.Item.Name);
                     if (_memoryCache.TryGetValue<LibraryEvent>(ev.Item.Id, out LibraryEvent addMovieEv))
                     {
                         queuedMovieAdds.Add(addMovieEv);
@@ -179,15 +175,15 @@ public class LibraryManagerEventsHelper : IDisposable
                     }
                     break;
                 case Movie when ev.EventType is EventType.Force:
-                    _logger.LogInformation("Movie force: {0}", ev.Item.Name);
+                    _logger.Info("Movie force: {0}", ev.Item.Name);
                     queuedMovieForces.Add(ev);
                     break;
                 case Series when ev.EventType is EventType.Add:
-                    _logger.LogInformation("Series add: {0}", ev.Item.Name);
+                    _logger.Info("Series add: {0}", ev.Item.Name);
                     // _pendingAddEventCache.Set<LibraryEvent>(ev.Item.Id, ev, _expiredOption);
                     break;
                 case Series when ev.EventType is EventType.Update:
-                    _logger.LogInformation("Series update: {0}", ev.Item.Name);
+                    _logger.Info("Series update: {0}", ev.Item.Name);
                     // if (_pendingAddEventCache.TryGetValue<LibraryEvent>(ev.Item.Id, out LibraryEvent addSerieEv))
                     // {
                     //     // 紧跟add事件的update事件不需要处理
@@ -199,11 +195,11 @@ public class LibraryManagerEventsHelper : IDisposable
                     // }
                     break;
                 case Season when ev.EventType is EventType.Add:
-                    _logger.LogInformation("Season add: {0}", ev.Item.Name);
+                    _logger.Info("Season add: {0}", ev.Item.Name);
                     _memoryCache.Set<LibraryEvent>(ev.Item.Id, ev, _pendingAddExpiredOption);
                     break;
                 case Season when ev.EventType is EventType.Update:
-                    _logger.LogInformation("Season update: {0}", ev.Item.Name);
+                    _logger.Info("Season update: {0}", ev.Item.Name);
                     if (_memoryCache.TryGetValue<LibraryEvent>(ev.Item.Id, out LibraryEvent addSeasonEv))
                     {
                         queuedSeasonAdds.Add(addSeasonEv);
@@ -215,11 +211,11 @@ public class LibraryManagerEventsHelper : IDisposable
                     }
                     break;
                 case Episode when ev.EventType is EventType.Update:
-                    _logger.LogInformation("Episode update: {0}.{1}", ev.Item.IndexNumber, ev.Item.Name);
+                    _logger.Info("Episode update: {0}.{1}", ev.Item.IndexNumber, ev.Item.Name);
                     queuedEpisodeUpdates.Add(ev);
                     break;
                 case Episode when ev.EventType is EventType.Force:
-                    _logger.LogInformation("Episode force: {0}.{1}", ev.Item.IndexNumber, ev.Item.Name);
+                    _logger.Info("Episode force: {0}.{1}", ev.Item.IndexNumber, ev.Item.Name);
                     queuedEpisodeForces.Add(ev);
                     break;
             }
@@ -248,7 +244,7 @@ public class LibraryManagerEventsHelper : IDisposable
         var libraryOptions = _libraryManager.GetLibraryOptions(item);
         if (libraryOptions != null && libraryOptions.DisabledSubtitleFetchers.Contains(Plugin.Instance?.Name))
         {
-            this._logger.LogInformation($"媒体库已关闭danmu插件, 忽略处理[{item.Name}].");
+            this._logger.Info($"媒体库已关闭danmu插件, 忽略处理[{item.Name}].");
             return true;
         }
 
@@ -269,7 +265,7 @@ public class LibraryManagerEventsHelper : IDisposable
             return;
         }
 
-        _logger.LogDebug("Processing {Count} movies with event type {EventType}", events.Count, eventType);
+        _logger.Debug("Processing {Count} movies with event type {EventType}", events.Count, eventType);
 
         var movies = events.Select(lev => (Movie)lev.Item)
             .Where(lev => !string.IsNullOrEmpty(lev.Name))
@@ -293,7 +289,7 @@ public class LibraryManagerEventsHelper : IDisposable
                         var mediaId = await scraper.SearchMediaId(currentItem).ConfigureAwait(false);
                         if (string.IsNullOrEmpty(mediaId))
                         {
-                            _logger.LogInformation("[{0}]元数据匹配失败：{1} ({2})", scraper.Name, item.Name, item.ProductionYear);
+                            _logger.Info("[{0}]元数据匹配失败：{1} ({2})", scraper.Name, item.Name, item.ProductionYear);
                             continue;
                         }
 
@@ -302,7 +298,7 @@ public class LibraryManagerEventsHelper : IDisposable
                         {
                             var providerVal = media.Id;
                             var commentId = media.CommentId;
-                            _logger.LogInformation("[{0}]匹配成功：name={1} ProviderId: {2}", scraper.Name, item.Name, providerVal);
+                            _logger.Info("[{0}]匹配成功：name={1} ProviderId: {2}", scraper.Name, item.Name, providerVal);
 
                             // 更新epid元数据
                             item.SetProviderId(scraper.ProviderId, providerVal);
@@ -315,11 +311,11 @@ public class LibraryManagerEventsHelper : IDisposable
                     }
                     catch (FrequentlyRequestException ex)
                     {
-                        _logger.LogError(ex, "[{0}]api接口触发风控，中止执行，请稍候再试.", scraper.Name);
+                        _logger.LogErrorException("[{0}]api接口触发风控，中止执行，请稍候再试.", scraper.Name, ex);
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, "[{0}]Exception handled processing movie events", scraper.Name);
+                        _logger.LogErrorException("[{0}]Exception handled processing movie events", scraper.Name, ex);
                     }
                 }
             }
@@ -353,11 +349,11 @@ public class LibraryManagerEventsHelper : IDisposable
                     }
                     catch (FrequentlyRequestException ex)
                     {
-                        _logger.LogError(ex, "api接口触发风控，中止执行，请稍候再试.");
+                        _logger.LogErrorException("api接口触发风控，中止执行，请稍候再试.", ex);
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, "Exception handled processing queued movie events");
+                        _logger.LogErrorException("Exception handled processing queued movie events", ex);
                     }
                 }
             }
@@ -415,7 +411,7 @@ public class LibraryManagerEventsHelper : IDisposable
             return;
         }
 
-        _logger.LogDebug("Processing {Count} shows with event type {EventType}", events.Count, eventType);
+        _logger.Debug("Processing {Count} shows with event type {EventType}", events.Count, eventType);
 
         var series = events.Select(lev => (Series)lev.Item)
             .Where(lev => !string.IsNullOrEmpty(lev.Name))
@@ -427,8 +423,8 @@ public class LibraryManagerEventsHelper : IDisposable
             {
                 foreach (var item in series)
                 {
-                    var seasons = ((Series)item).GetSeasons(_libraryManager, new DtoOptions(false));
-                    foreach (var season in seasons.ToList())
+                    var seasons = item.GetSeasons(null, new DtoOptions(false));
+                    foreach (var season in seasons)
                     {
                         // 发现season保存元数据，不会推送update事件，这里通过series的update事件推送刷新
                         QueueItem(season, eventType);
@@ -439,7 +435,7 @@ public class LibraryManagerEventsHelper : IDisposable
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Exception handled processing queued show events");
+            _logger.LogErrorException("Exception handled processing queued show events", ex);
         }
     }
 
@@ -456,7 +452,7 @@ public class LibraryManagerEventsHelper : IDisposable
             return;
         }
 
-        _logger.LogDebug("Processing {Count} seasons with event type {EventType}", events.Count, eventType);
+        _logger.Debug("Processing {Count} seasons with event type {EventType}", events.Count, eventType);
 
         var seasons = events.Select(lev => (Season)lev.Item)
             .Where(lev => !string.IsNullOrEmpty(lev.Name))
@@ -476,7 +472,7 @@ public class LibraryManagerEventsHelper : IDisposable
 
                 if (season.IndexNumber.HasValue && season.IndexNumber == 0)
                 {
-                    _logger.LogInformation("special特典文件夹不处理：name={0} number={1}", season.Name, season.IndexNumber);
+                    _logger.Info("special特典文件夹不处理：name={0} number={1}", season.Name, season.IndexNumber);
                     continue;
                 }
 
@@ -513,13 +509,13 @@ public class LibraryManagerEventsHelper : IDisposable
                         var mediaId = await scraper.SearchMediaId(searchSeason);
                         if (string.IsNullOrEmpty(mediaId))
                         {
-                            _logger.LogInformation("[{0}]匹配失败：{1}-{2} ({3})", scraper.Name, series.Name, season.Name, season.ProductionYear);
+                            _logger.Info("[{0}]匹配失败：{1}-{2} ({3})", scraper.Name, series.Name, season.Name, season.ProductionYear);
                             continue;
                         }
                         var media = await scraper.GetMedia(searchSeason, mediaId);
                         if (media == null)
                         {
-                            _logger.LogInformation("[{0}]匹配成功，但获取不到视频信息. {1}-{2} id: {3}", scraper.Name, series.Name, season.Name, mediaId);
+                            _logger.Info("[{0}]匹配成功，但获取不到视频信息. {1}-{2} id: {3}", scraper.Name, series.Name, season.Name, mediaId);
                             continue;
                         }
 
@@ -528,16 +524,16 @@ public class LibraryManagerEventsHelper : IDisposable
                         season.SetProviderId(scraper.ProviderId, mediaId);
                         queueUpdateMeta.Add(season);
 
-                        _logger.LogInformation("[{0}]匹配成功：{1}-{2} season_number:{3} ProviderId: {4}", scraper.Name, series.Name, season.Name, season.IndexNumber, mediaId);
+                        _logger.Info("[{0}]匹配成功：{1}-{2} season_number:{3} ProviderId: {4}", scraper.Name, series.Name, season.Name, season.IndexNumber, mediaId);
                         break;
                     }
                     catch (FrequentlyRequestException ex)
                     {
-                        _logger.LogError(ex, "api接口触发风控，中止执行，请稍候再试.");
+                        _logger.LogErrorException("api接口触发风控，中止执行，请稍候再试.", ex);
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, "Exception handled processing season events");
+                        _logger.LogErrorException("Exception handled processing season events", ex);
                     }
                 }
             }
@@ -578,7 +574,7 @@ public class LibraryManagerEventsHelper : IDisposable
                         var media = await scraper.GetMedia(season, providerVal);
                         if (media == null)
                         {
-                            _logger.LogInformation("[{0}]获取不到视频信息. ProviderId: {1}", scraper.Name, providerVal);
+                            _logger.Info("[{0}]获取不到视频信息. ProviderId: {1}", scraper.Name, providerVal);
                             break;
                         }
 
@@ -588,25 +584,25 @@ public class LibraryManagerEventsHelper : IDisposable
                             var indexNumber = episode.IndexNumber ?? 0;
                             if (indexNumber <= 0)
                             {
-                                _logger.LogInformation("[{0}]匹配失败，缺少集号. [{1}]{2}", scraper.Name, season.Name, fileName);
+                                _logger.Info("[{0}]匹配失败，缺少集号. [{1}]{2}", scraper.Name, season.Name, fileName);
                                 continue;
                             }
 
                             if (indexNumber > media.Episodes.Count)
                             {
-                                _logger.LogInformation("[{0}]匹配失败，集号超过总集数，可能识别集号错误. [{1}]{2} indexNumber: {3}", scraper.Name, season.Name, fileName, indexNumber);
+                                _logger.Info("[{0}]匹配失败，集号超过总集数，可能识别集号错误. [{1}]{2} indexNumber: {3}", scraper.Name, season.Name, fileName, indexNumber);
                                 continue;
                             }
 
                             if (this.Config.DownloadOption.EnableEpisodeCountSame && media.Episodes.Count != episodes.Count)
                             {
-                                _logger.LogInformation("[{0}]刷新弹幕失败, 集数不一致。video: {1}.{2} 弹幕数：{3} 集数：{4}", scraper.Name, indexNumber, episode.Name, media.Episodes.Count, episodes.Count);
+                                _logger.Info("[{0}]刷新弹幕失败, 集数不一致。video: {1}.{2} 弹幕数：{3} 集数：{4}", scraper.Name, indexNumber, episode.Name, media.Episodes.Count, episodes.Count);
                                 continue;
                             }
 
                             var epId = media.Episodes[indexNumber - 1].Id;
                             var commentId = media.Episodes[indexNumber - 1].CommentId;
-                            _logger.LogInformation("[{0}]成功匹配. {1}.{2} -> epId: {3} cid: {4}", scraper.Name, indexNumber, episode.Name, epId, commentId);
+                            _logger.Info("[{0}]成功匹配. {1}.{2} -> epId: {3} cid: {4}", scraper.Name, indexNumber, episode.Name, epId, commentId);
 
                             // 更新eposide元数据
                             var episodeProviderVal = episode.GetProviderId(scraper.ProviderId);
@@ -625,11 +621,11 @@ public class LibraryManagerEventsHelper : IDisposable
                     }
                     catch (FrequentlyRequestException ex)
                     {
-                        _logger.LogError(ex, "api接口触发风控，中止执行，请稍候再试.");
+                        _logger.LogErrorException("api接口触发风控，中止执行，请稍候再试.", ex);
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, "Exception handled processing queued movie events");
+                        _logger.LogErrorException("Exception handled processing queued movie events", ex);
                     }
                 }
 
@@ -654,7 +650,7 @@ public class LibraryManagerEventsHelper : IDisposable
             return;
         }
 
-        _logger.LogDebug("Processing {Count} episodes with event type {EventType}", events.Count, eventType);
+        _logger.Debug("Processing {Count} episodes with event type {EventType}", events.Count, eventType);
 
         var items = events.Select(lev => (Episode)lev.Item)
             .Where(lev => !string.IsNullOrEmpty(lev.Name))
@@ -680,7 +676,7 @@ public class LibraryManagerEventsHelper : IDisposable
 
                     if (scraper == null)
                     {
-                        _logger.LogInformation("找不到对应的弹幕来源. ProviderId: {0}", seasonFirstProviderId);
+                        _logger.Info("找不到对应的弹幕来源. ProviderId: {0}", seasonFirstProviderId);
                         continue;
                     }
 
@@ -691,27 +687,27 @@ public class LibraryManagerEventsHelper : IDisposable
                         var indexNumber = item.IndexNumber ?? 0;
                         if (indexNumber <= 0)
                         {
-                            this._logger.LogInformation("[{0}]匹配失败，缺少集号. [{1}]{2}", scraper.Name, season.Name, fileName);
+                            this._logger.Info("[{0}]匹配失败，缺少集号. [{1}]{2}", scraper.Name, season.Name, fileName);
                             continue;
                         }
 
                         if (indexNumber > media.Episodes.Count)
                         {
-                            this._logger.LogInformation("[{0}]匹配失败，集号超过总集数，可能识别集号错误. [{1}]{2} indexNumber: {3}", scraper.Name, season.Name, fileName, indexNumber);
+                            this._logger.Info("[{0}]匹配失败，集号超过总集数，可能识别集号错误. [{1}]{2} indexNumber: {3}", scraper.Name, season.Name, fileName, indexNumber);
                             continue;
                         }
 
                         var episodes = this.GetExistingEpisodes(season);
                         if (this.Config.DownloadOption.EnableEpisodeCountSame && media.Episodes.Count != episodes.Count)
                         {
-                            this._logger.LogInformation("[{0}]刷新弹幕失败, 集数不一致。video: {1}.{2} 弹幕数：{3} 集数：{4}", scraper.Name, indexNumber, item.Name, media.Episodes.Count, episodes.Count);
+                            this._logger.Info("[{0}]刷新弹幕失败, 集数不一致。video: {1}.{2} 弹幕数：{3} 集数：{4}", scraper.Name, indexNumber, item.Name, media.Episodes.Count, episodes.Count);
                             continue;
                         }
 
                         var idx = indexNumber - 1;
                         var epId = media.Episodes[idx].Id;
                         var commentId = media.Episodes[idx].CommentId;
-                        this._logger.LogInformation("[{0}]成功匹配. {1}.{2} -> epId: {3} cid: {4}", scraper.Name, item.IndexNumber, item.Name, epId, commentId);
+                        this._logger.Info("[{0}]成功匹配. {1}.{2} -> epId: {3} cid: {4}", scraper.Name, item.IndexNumber, item.Name, epId, commentId);
 
                         // 更新 eposide 元数据
                         var episodeProviderVal = item.GetProviderId(scraper.ProviderId);
@@ -749,11 +745,11 @@ public class LibraryManagerEventsHelper : IDisposable
                     }
                     catch (FrequentlyRequestException ex)
                     {
-                        _logger.LogError(ex, "api接口触发风控，中止执行，请稍候再试.");
+                        _logger.LogErrorException("api接口触发风控，中止执行，请稍候再试.", ex);
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, "Exception handled processing queued movie events");
+                        _logger.LogErrorException("Exception handled processing queued movie events", ex);
                     }
                 }
             }
@@ -807,20 +803,20 @@ public class LibraryManagerEventsHelper : IDisposable
                         var indexNumber = episode.IndexNumber ?? 0;
                         if (indexNumber < 1)
                         {
-                            _logger.LogInformation("[{0}]缺少集号，忽略处理. [{1}]{2}", scraper.Name, season.Name, fileName);
+                            _logger.Info("[{0}]缺少集号，忽略处理. [{1}]{2}", scraper.Name, season.Name, fileName);
                             continue;
                         }
 
                         if (indexNumber > media.Episodes.Count)
                         {
-                            _logger.LogInformation("[{0}]集号超过弹幕数，忽略处理. [{1}]{2} 集号: {3} 弹幕数：{4}", scraper.Name, season.Name, fileName, indexNumber, media.Episodes.Count);
+                            _logger.Info("[{0}]集号超过弹幕数，忽略处理. [{1}]{2} 集号: {3} 弹幕数：{4}", scraper.Name, season.Name, fileName, indexNumber, media.Episodes.Count);
                             continue;
                         }
 
                         // 特典或extras影片不处理（动画经常会放在季文件夹下）
                         if (episode.ParentIndexNumber is null or 0)
                         {
-                            _logger.LogInformation("[{0}]缺少季号，可能是特典或extras影片，忽略处理. [{1}]{2}", scraper.Name, season.Name, fileName);
+                            _logger.Info("[{0}]缺少季号，可能是特典或extras影片，忽略处理. [{1}]{2}", scraper.Name, season.Name, fileName);
                             continue;
                         }
 
@@ -849,7 +845,7 @@ public class LibraryManagerEventsHelper : IDisposable
             .ToList();
         if (episodes.Count != episodesWithoutSP.Count)
         {
-            _logger.LogInformation("{0}季存在{1}个特典或extra片段，忽略处理.", season.Name, (episodes.Count - episodesWithoutSP.Count));
+            _logger.Info("{0}季存在{1}个特典或extra片段，忽略处理.", season.Name, (episodes.Count - episodesWithoutSP.Count));
             episodes = episodesWithoutSP;
         }
         return episodes;
@@ -880,10 +876,10 @@ public class LibraryManagerEventsHelper : IDisposable
                     item.ProviderIds[pair.Key] = pair.Value;
                 }
 
-                _itemRepository.SaveItems(new List<BaseItem> { item }, CancellationToken.None);
+                item.UpdateToRepository(ItemUpdateType.MetadataEdit);
             }
         }
-        _logger.LogInformation("更新epid到元数据完成。item数：{0}", queue.Count);
+        _logger.Info("更新epid到元数据完成。item数：{0}", queue.Count);
     }
 
     public async Task DownloadDanmu(AbstractScraper scraper, BaseItem item, string commentId, bool ignoreCheck = false)
@@ -895,7 +891,7 @@ public class LibraryManagerEventsHelper : IDisposable
             // 弹幕5分钟内更新过，忽略处理（有时Update事件会重复执行）
             if (!ignoreCheck && _memoryCache.TryGetValue(checkDownloadedKey, out var latestDownloaded))
             {
-                _logger.LogInformation("[{0}]最近5分钟已更新过弹幕xml，忽略处理：{1}.{2}", scraper.Name, item.IndexNumber, item.Name);
+                _logger.Info("[{0}]最近5分钟已更新过弹幕xml，忽略处理：{1}.{2}", scraper.Name, item.IndexNumber, item.Name);
                 return;
             }
 
@@ -905,7 +901,7 @@ public class LibraryManagerEventsHelper : IDisposable
             {
                 if (danmaku.Items.Count <= 0)
                 {
-                    _logger.LogInformation("[{0}]弹幕内容为空，忽略处理：{1}.{2}", scraper.Name, item.IndexNumber, item.Name);
+                    _logger.Info("[{0}]弹幕内容为空，忽略处理：{1}.{2}", scraper.Name, item.IndexNumber, item.Name);
                     return;
                 }
 
@@ -913,11 +909,11 @@ public class LibraryManagerEventsHelper : IDisposable
                 var bytes = danmaku.ToXml();
                 if (bytes.Length < 1024 && scraper.ProviderName == Emby.Plugin.Danmu.Scrapers.Bilibili.Bilibili.ScraperProviderName)
                 {
-                    _logger.LogInformation("[{0}]弹幕内容少于1KB，可能是已失效弹幕，忽略处理：{1}.{2}", scraper.Name, item.IndexNumber, item.Name);
+                    _logger.Info("[{0}]弹幕内容少于1KB，可能是已失效弹幕，忽略处理：{1}.{2}", scraper.Name, item.IndexNumber, item.Name);
                     return;
                 }
                 await this.SaveDanmu(item, bytes);
-                this._logger.LogInformation("[{0}]弹幕下载成功：name={1}.{2} commentId={3}", scraper.Name, item.IndexNumber ?? 1, item.Name, commentId);
+                this._logger.Info("[{0}]弹幕下载成功：name={1}.{2} commentId={3}", scraper.Name, item.IndexNumber ?? 1, item.Name, commentId);
             }
             else
             {
@@ -927,7 +923,7 @@ public class LibraryManagerEventsHelper : IDisposable
         catch (Exception ex)
         {
             _memoryCache.Remove(checkDownloadedKey);
-            _logger.LogError(ex, "[{0}]Exception handled download danmu file. name={1}", scraper.Name, item.Name);
+            _logger.LogErrorException("[{0}]Exception handled download danmu file. name={1}", scraper.Name, item.Name, ex);
         }
     }
 
@@ -1001,7 +997,7 @@ public class LibraryManagerEventsHelper : IDisposable
         // 保存指定弹幕元数据
         item.ProviderIds[providerId] = providerVal;
 
-        _itemRepository.SaveItems(new List<BaseItem> { item }, CancellationToken.None);
+        item.UpdateToRepository(ItemUpdateType.MetadataEdit);
     }
 
 

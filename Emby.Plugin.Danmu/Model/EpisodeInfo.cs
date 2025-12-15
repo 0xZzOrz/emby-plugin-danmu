@@ -1,16 +1,14 @@
-using System.Text.Json.Serialization;
-
-public class EpisodeInfo
+namespace Emby.Plugin.Danmu.Model
 {
-    [JsonPropertyName("id")]
-    public string Id { get; set; } = string.Empty;
+    public class EpisodeInfo
+    {
+        public string Id { get; set; } = string.Empty;
 
-    [JsonPropertyName("cid")]
-    public string CommentId { get; set; } = string.Empty;
+        public string CommentId { get; set; } = string.Empty;
 
-    [JsonPropertyName("number")]
-    public int Number { get; set; } = 0;
+        public int Number { get; set; } = 0;
 
-    [JsonPropertyName("title")]
-    public string Title { get; set; } = string.Empty;
+        public string Title { get; set; } = string.Empty;
+    }
 }
+

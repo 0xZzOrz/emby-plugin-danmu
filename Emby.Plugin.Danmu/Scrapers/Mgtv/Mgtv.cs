@@ -2,7 +2,7 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using MediaBrowser.Controller.Entities;
-using Microsoft.Extensions.Logging;
+using MediaBrowser.Model.Logging;
 using Emby.Plugin.Danmu.Scrapers.Entity;
 using System.Collections.Generic;
 using Emby.Plugin.Danmu.Core.Extensions;
@@ -16,8 +16,8 @@ public class Mgtv : AbstractScraper
 
     private readonly MgtvApi _api;
 
-    public Mgtv(ILoggerFactory logManager)
-        : base(logManager.CreateLogger<Mgtv>())
+    public Mgtv(ILogManager logManager)
+        : base(logManager.GetLogger(typeof(Mgtv).Name))
     {
         _api = new MgtvApi(logManager);
     }
@@ -113,7 +113,7 @@ public class Mgtv : AbstractScraper
             var itemPubYear = item.ProductionYear ?? 0;
             if (itemPubYear > 0 && pubYear > 0 && itemPubYear != pubYear)
             {
-                log.LogDebug("[{0}] 发行年份不一致，忽略处理. year: {1} emby: {2}", title, pubYear, itemPubYear);
+                log.LogDebug("[{0}] 发行年份不一致，忽略处理. year: {1} jellyfin: {2}", title, pubYear, itemPubYear);
                 continue;
             }
 

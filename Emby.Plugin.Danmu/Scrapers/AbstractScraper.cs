@@ -4,7 +4,7 @@ using System.Threading.Tasks;
 using Emby.Plugin.Danmu.Configuration;
 using Emby.Plugin.Danmu.Scrapers.Entity;
 using MediaBrowser.Controller.Entities;
-using Microsoft.Extensions.Logging;
+using MediaBrowser.Model.Logging;
 
 namespace Emby.Plugin.Danmu.Scrapers;
 

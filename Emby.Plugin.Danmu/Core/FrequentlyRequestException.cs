@@ -1,10 +1,12 @@
-
 using System;
 
-public class FrequentlyRequestException : Exception
+namespace Emby.Plugin.Danmu.Core
 {
-    public FrequentlyRequestException(Exception ex) : base("Request tool frequently", ex)
+    public class FrequentlyRequestException : Exception
     {
-
+        public FrequentlyRequestException(Exception ex) : base("Request tool frequently", ex)
+        {
+        }
     }
 }
+

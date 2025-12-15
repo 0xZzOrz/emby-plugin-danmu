@@ -4,30 +4,31 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Emby.Plugin.Danmu.Core;
-
-public class FileSystem : IFileSystem
+namespace Emby.Plugin.Danmu.Core
 {
-    public Task WriteAllBytesAsync(string path, byte[] bytes, CancellationToken cancellationToken = default)
+    public class FileSystem : IFileSystem
     {
-        return File.WriteAllBytesAsync(path, bytes, cancellationToken);
-    }
+        public static readonly FileSystem instant = new FileSystem();
 
-    public Task WriteAllTextAsync(string path, string? contents, Encoding encoding, CancellationToken cancellationToken = default)
-    {
-        return File.WriteAllTextAsync(path, contents, cancellationToken);
-    }
+        public Task WriteAllBytesAsync(string path, byte[] bytes, CancellationToken cancellationToken = default)
+        {
+            return File.WriteAllBytesAsync(path, bytes, cancellationToken);
+        }
 
-    public DateTime GetLastWriteTime(string path)
-    {
-        return File.GetLastWriteTime(path);
-    }
+        public Task WriteAllTextAsync(string path, string contents, Encoding encoding, CancellationToken cancellationToken = default)
+        {
+            return File.WriteAllTextAsync(path, contents, encoding, cancellationToken);
+        }
 
-    public bool Exists(string? path)
-    {
-        return File.Exists(path);
+        public DateTime GetLastWriteTime(string path)
+        {
+            return File.GetLastWriteTime(path);
+        }
+
+        public bool Exists(string path)
+        {
+            return File.Exists(path);
+        }
     }
 }
-
-
 

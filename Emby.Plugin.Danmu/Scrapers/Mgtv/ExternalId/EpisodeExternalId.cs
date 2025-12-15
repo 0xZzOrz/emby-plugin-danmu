@@ -14,15 +14,12 @@ namespace Emby.Plugin.Danmu.Scrapers.Mgtv.ExternalId
     public class EpisodeExternalId : IExternalId
     {
         /// <inheritdoc />
-        public string ProviderName => Mgtv.ScraperProviderName;
+        public string Name => Mgtv.ScraperProviderName;
 
         /// <inheritdoc />
         public string Key => Mgtv.ScraperProviderId;
         /// <inheritdoc />
-        public string Name => ProviderName;
-
-        /// <inheritdoc />
-        public string? UrlFormatString => null;
+        public string UrlFormatString => "https://example.com/episode/{0}";
 
         /// <inheritdoc />
 

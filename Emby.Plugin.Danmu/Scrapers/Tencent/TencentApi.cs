@@ -14,7 +14,7 @@ using Emby.Plugin.Danmu.Core.Extensions;
 using Emby.Plugin.Danmu.Scrapers.Entity;
 using Emby.Plugin.Danmu.Scrapers.Tencent.Entity;
 using Microsoft.Extensions.Caching.Memory;
-using Microsoft.Extensions.Logging;
+using MediaBrowser.Model.Logging;
 using RateLimiter;
 
 namespace Emby.Plugin.Danmu.Scrapers.Tencent;
@@ -32,9 +32,9 @@ public class TencentApi : AbstractApi
     /// <summary>
     /// Initializes a new instance of the <see cref="TencentApi"/> class.
     /// </summary>
-    /// <param name="loggerFactory">The <see cref="ILoggerFactory"/>.</param>
-    public TencentApi(ILoggerFactory loggerFactory)
-        : base(loggerFactory.CreateLogger<TencentApi>())
+    /// <param name="loggerFactory">The <see cref="ILogManager"/>.</param>
+    public TencentApi(ILogManager loggerFactory)
+        : base(loggerFactory.GetLogger(typeof(TencentApi).Name))
     {
         httpClient.DefaultRequestHeaders.Add("referer", "https://v.qq.com/");
         this.AddCookies("pgv_pvid=40b67e3b06027f3d; video_platform=2; vversion_name=8.2.95; video_bucketid=4; video_omgid=0a1ff6bc9407c0b1cff86ee5d359614d", new Uri("https://v.qq.com"));

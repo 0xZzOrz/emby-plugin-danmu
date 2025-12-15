@@ -4,7 +4,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using MediaBrowser.Controller.Entities;
-using Microsoft.Extensions.Logging;
+using MediaBrowser.Model.Logging;
 using Emby.Plugin.Danmu.Scrapers.Entity;
 using Emby.Plugin.Danmu.Core.Extensions;
 using System.Text.RegularExpressions;
@@ -18,8 +18,8 @@ public class DanmuApi : AbstractScraper
 
     private readonly DanmuApiApi _api;
 
-    public DanmuApi(ILoggerFactory logManager)
-        : base(logManager.CreateLogger<DanmuApi>())
+    public DanmuApi(ILogManager logManager)
+        : base(logManager.GetLogger(typeof(DanmuApi).Name))
     {
         _api = new DanmuApiApi(logManager);
     }
@@ -86,7 +86,7 @@ public class DanmuApi : AbstractScraper
             var itemPubYear = item.ProductionYear ?? 0;
             if (itemPubYear > 0 && anime.Year > 0 && itemPubYear != anime.Year)
             {
-                log.LogDebug("[{0}] 发行年份不一致，忽略处理. 年份：{1} emby: {2}", title, anime.Year, itemPubYear);
+                log.LogDebug("[{0}] 发行年份不一致，忽略处理. 年份：{1} jellyfin: {2}", title, anime.Year, itemPubYear);
                 continue;
             }
 

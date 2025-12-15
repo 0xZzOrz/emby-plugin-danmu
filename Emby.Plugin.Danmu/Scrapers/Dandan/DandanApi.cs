@@ -4,7 +4,7 @@ using System.Linq;
 using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
+using MediaBrowser.Model.Logging;
 using System.Threading;
 using System.Net.Http.Json;
 using System.Security.Cryptography;
@@ -64,9 +64,9 @@ public class DandanApi : AbstractApi
     /// <summary>
     /// Initializes a new instance of the <see cref="DandanApi"/> class.
     /// </summary>
-    /// <param name="loggerFactory">The <see cref="ILoggerFactory"/>.</param>
-    public DandanApi(ILoggerFactory loggerFactory)
-        : base(loggerFactory.CreateLogger<DandanApi>())
+    /// <param name="loggerFactory">The <see cref="ILogManager"/>.</param>
+    public DandanApi(ILogManager loggerFactory)
+        : base(loggerFactory.GetLogger(typeof(DandanApi).Name))
     {
         httpClient.DefaultRequestHeaders.Add("Accept", "application/json");
         httpClient.Timeout = TimeSpan.FromSeconds(10);
@@ -121,7 +121,7 @@ public class DandanApi : AbstractApi
         {
             ["fileName"] = Path.GetFileNameWithoutExtension(item.Path),
             ["fileHash"] = "00000000000000000000000000000000",
-            ["fileSize"] = (int)item.Size,
+            ["fileSize"] = item.Size > 0 ? (int)item.Size : 0,
             ["videoDuration"] = (item.RunTimeTicks ?? 0) / 10000000,
             ["matchMode"] = "fileNameOnly",
         };

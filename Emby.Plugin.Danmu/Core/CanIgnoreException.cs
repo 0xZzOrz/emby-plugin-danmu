@@ -1,21 +1,23 @@
 using System;
 
-namespace Emby.Plugin.Danmu.Core;
-
-class CanIgnoreException : Exception
+namespace Emby.Plugin.Danmu.Core
 {
-    public CanIgnoreException(string message) : base(message)
+    public class CanIgnoreException : Exception
     {
-    }
-
-    /// <summary>
-    /// Don't display call stack as it's irrelevant
-    /// </summary>
-    public override string StackTrace
-    {
-        get
+        public CanIgnoreException(string message) : base(message)
         {
-            return "";
+        }
+
+        /// <summary>
+        /// Don't display call stack as it's irrelevant
+        /// </summary>
+        public override string StackTrace
+        {
+            get
+            {
+                return "";
+            }
         }
     }
 }
+

@@ -13,7 +13,7 @@ using ComposableAsync;
 using Emby.Plugin.Danmu.Core.Extensions;
 using Emby.Plugin.Danmu.Scrapers.Iqiyi.Entity;
 using Microsoft.Extensions.Caching.Memory;
-using Microsoft.Extensions.Logging;
+using MediaBrowser.Model.Logging;
 using RateLimiter;
 using ICSharpCode.SharpZipLib.Zip.Compression.Streams;
 using System.Xml.Serialization;
@@ -40,9 +40,9 @@ public class IqiyiApi : AbstractApi
     /// <summary>
     /// Initializes a new instance of the <see cref="IqiyiApi"/> class.
     /// </summary>
-    /// <param name="loggerFactory">The <see cref="ILoggerFactory"/>.</param>
-    public IqiyiApi(ILoggerFactory loggerFactory)
-        : base(loggerFactory.CreateLogger<IqiyiApi>())
+    /// <param name="loggerFactory">The <see cref="ILogManager"/>.</param>
+    public IqiyiApi(ILogManager loggerFactory)
+        : base(loggerFactory.GetLogger(typeof(IqiyiApi).Name))
     {
         httpClient.DefaultRequestHeaders.Add("user-agent", HTTP_USER_AGENT);
     }
@@ -275,7 +275,7 @@ public class IqiyiApi : AbstractApi
             }
             catch (InvalidOperationException ex)
             {
-                _logger.LogError("获取爱奇艺弹幕({0})出错：{1}", tvId, ex.Message);
+                _logger.LogError(ex, "获取爱奇艺弹幕({0})出错：{1}", tvId, ex.Message);
                 break;
             }
             catch (Exception ex)

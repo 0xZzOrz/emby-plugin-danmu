@@ -14,18 +14,14 @@ namespace Emby.Plugin.Danmu.Scrapers.Dandan.ExternalId
     public class MovieExternalId : IExternalId
     {
         /// <inheritdoc />
-        public string ProviderName => Dandan.ScraperProviderName;
+        public string Name => Dandan.ScraperProviderName;
 
         /// <inheritdoc />
         public string Key => Dandan.ScraperProviderId;
-        /// <inheritdoc />
-        public string Name => ProviderName;
 
         /// <inheritdoc />
-        public string? UrlFormatString => null;
+        public string UrlFormatString => "#";
 
-        /// <inheritdoc />
-        
         /// <inheritdoc />
         public bool Supports(IHasProviderIds item) => item is Movie;
     }

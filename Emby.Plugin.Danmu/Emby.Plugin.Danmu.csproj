@@ -1,16 +1,12 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>net9.0</TargetFramework>
+    <TargetFramework>net8.0</TargetFramework>
     <RootNamespace>Emby.Plugin.Danmu</RootNamespace>
+    <LangVersion>latest</LangVersion>
     <GenerateDocumentationFile>False</GenerateDocumentationFile>
-    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
     <Nullable>enable</Nullable>
-    <AnalysisMode>AllEnabledByDefault</AnalysisMode>
     <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
-    <!-- Default Emby Server path - override with /p:EmbyServerPath=... or set environment variable -->
-    <EmbyServerPath Condition="'$(EmbyServerPath)' == ''">$(EMBY_SERVER_PATH)</EmbyServerPath>
-    <EmbyServerPath Condition="'$(EmbyServerPath)' == ''">C:\Program Files\Emby-Server</EmbyServerPath>
-    <EmbyServerPath Condition="'$(EmbyServerPath)' == ''">/opt/emby-server</EmbyServerPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
     <TreatWarningsAsErrors>False</TreatWarningsAsErrors>
@@ -19,64 +15,21 @@
     <TreatWarningsAsErrors>False</TreatWarningsAsErrors>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="ComposableAsync.Core" Version="1.3.0" />
-    <PackageReference Include="Google.Protobuf" Version="3.22.0" />
-    <PackageReference Include="ILRepack.Lib.MSBuild.Task" Version="2.0.32">
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-      <PrivateAssets>all</PrivateAssets>
-    </PackageReference>
-    <PackageReference Include="Microsoft.AspNetCore.Mvc.Core" Version="2.2.5" />
-    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.0" />
-    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="8.0.0" />
-    <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="7.0.1" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="8.0.0" />
-    <PackageReference Include="Microsoft.Extensions.Http" Version="8.0.0" />
-    <PackageReference Include="Microsoft.Extensions.FileSystemGlobbing" Version="8.0.0" />
+    <PackageReference Include="ComposableAsync.Core" Version="1.1.1" />
+    <PackageReference Include="Google.Protobuf" Version="3.31.0" />
+    <PackageReference Include="MediaBrowser.Server.Core" Version="4.8.5" />
+    <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="8.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Caching.Abstractions" Version="8.0.0" />
     <PackageReference Include="RateLimiter" Version="2.2.0" />
     <PackageReference Include="SharpZipLib" Version="1.4.2" />
   </ItemGroup>
   <ItemGroup>
-    <!-- Emby Server DLL references - priority: local lib folder > EmbyServerPath > environment variable -->
-    <!-- First try local lib folder (recommended for development) -->
-    <Reference Include="MediaBrowser.Common" Condition="Exists('$(MSBuildThisFileDirectory)lib/emby/MediaBrowser.Common.dll')">
-      <HintPath>$(MSBuildThisFileDirectory)lib/emby/MediaBrowser.Common.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="MediaBrowser.Controller" Condition="Exists('$(MSBuildThisFileDirectory)lib/emby/MediaBrowser.Controller.dll')">
-      <HintPath>$(MSBuildThisFileDirectory)lib/emby/MediaBrowser.Controller.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="MediaBrowser.Model" Condition="Exists('$(MSBuildThisFileDirectory)lib/emby/MediaBrowser.Model.dll')">
-      <HintPath>$(MSBuildThisFileDirectory)lib/emby/MediaBrowser.Model.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-  </ItemGroup>
-  <ItemGroup Condition="!Exists('$(MSBuildThisFileDirectory)lib/emby/MediaBrowser.Common.dll')">
-    <!-- Fallback to Emby Server installation path -->
-    <Reference Include="MediaBrowser.Common" Condition="Exists('$(EmbyServerPath)/system/MediaBrowser.Common.dll') Or Exists('$(EmbyServerPath)\system\MediaBrowser.Common.dll')">
-      <HintPath Condition="'$(OS)' == 'Windows_NT'">$(EmbyServerPath)\system\MediaBrowser.Common.dll</HintPath>
-      <HintPath Condition="'$(OS)' != 'Windows_NT'">$(EmbyServerPath)/system/MediaBrowser.Common.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="MediaBrowser.Controller" Condition="Exists('$(EmbyServerPath)/system/MediaBrowser.Controller.dll') Or Exists('$(EmbyServerPath)\system\MediaBrowser.Controller.dll')">
-      <HintPath Condition="'$(OS)' == 'Windows_NT'">$(EmbyServerPath)\system\MediaBrowser.Controller.dll</HintPath>
-      <HintPath Condition="'$(OS)' != 'Windows_NT'">$(EmbyServerPath)/system/MediaBrowser.Controller.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="MediaBrowser.Model" Condition="Exists('$(EmbyServerPath)/system/MediaBrowser.Model.dll') Or Exists('$(EmbyServerPath)\system\MediaBrowser.Model.dll')">
-      <HintPath Condition="'$(OS)' == 'Windows_NT'">$(EmbyServerPath)\system\MediaBrowser.Model.dll</HintPath>
-      <HintPath Condition="'$(OS)' != 'Windows_NT'">$(EmbyServerPath)/system/MediaBrowser.Model.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-  </ItemGroup>
-  <ItemGroup>
-    <PackageReference Include="SerilogAnalyzer" Version="0.15.0" PrivateAssets="All" />
-    <PackageReference Include="StyleCop.Analyzers" Version="1.2.0-beta.376" PrivateAssets="All" />
-    <PackageReference Include="SmartAnalyzers.MultithreadingAnalyzer" Version="1.1.31" PrivateAssets="All" />
-  </ItemGroup>
-  <ItemGroup>
     <None Remove="Configuration\configPage.html" />
+    <None Remove="Configuration\config.js" />
+    <None Remove="Configuration\logo.png" />
     <EmbeddedResource Include="Configuration\configPage.html" />
+    <EmbeddedResource Include="Configuration\config.js" />
+    <EmbeddedResource Include="Configuration\logo.png" />
   </ItemGroup>
 </Project>
 

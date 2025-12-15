@@ -1,10 +1,5 @@
 using System;
-using System.Collections.Generic;
-using System.Diagnostics.Eventing.Reader;
-using System.Linq;
-using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 
 namespace Emby.Plugin.Danmu.Core.Extensions
 {
@@ -33,3 +28,4 @@ namespace Emby.Plugin.Danmu.Core.Extensions
         }
     }
 }
+

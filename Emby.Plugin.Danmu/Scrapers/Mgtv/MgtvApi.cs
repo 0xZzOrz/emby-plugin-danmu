@@ -9,7 +9,7 @@ using ComposableAsync;
 using Emby.Plugin.Danmu.Core.Extensions;
 using Emby.Plugin.Danmu.Scrapers.Mgtv.Entity;
 using Microsoft.Extensions.Caching.Memory;
-using Microsoft.Extensions.Logging;
+using MediaBrowser.Model.Logging;
 using RateLimiter;
 
 namespace Emby.Plugin.Danmu.Scrapers.Mgtv;
@@ -23,9 +23,9 @@ public class MgtvApi : AbstractApi
     /// <summary>
     /// Initializes a new instance of the <see cref="MgtvApi"/> class.
     /// </summary>
-    /// <param name="loggerFactory">The <see cref="ILoggerFactory"/>.</param>
-    public MgtvApi(ILoggerFactory loggerFactory)
-        : base(loggerFactory.CreateLogger<MgtvApi>())
+    /// <param name="loggerFactory">The <see cref="ILogManager"/>.</param>
+    public MgtvApi(ILogManager loggerFactory)
+        : base(loggerFactory.GetLogger(typeof(MgtvApi).Name))
     {
         httpClient.DefaultRequestHeaders.Add("referer", "https://www.mgtv.com/");
     }

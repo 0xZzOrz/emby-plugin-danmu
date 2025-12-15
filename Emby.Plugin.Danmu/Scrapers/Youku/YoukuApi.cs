@@ -13,7 +13,7 @@ using ComposableAsync;
 using Emby.Plugin.Danmu.Core.Extensions;
 using Emby.Plugin.Danmu.Scrapers.Youku.Entity;
 using Microsoft.Extensions.Caching.Memory;
-using Microsoft.Extensions.Logging;
+using MediaBrowser.Model.Logging;
 using RateLimiter;
 
 namespace Emby.Plugin.Danmu.Scrapers.Youku;
@@ -38,9 +38,9 @@ public class YoukuApi : AbstractApi
     /// <summary>
     /// Initializes a new instance of the <see cref="YoukuApi"/> class.
     /// </summary>
-    /// <param name="loggerFactory">The <see cref="ILoggerFactory"/>.</param>
-    public YoukuApi(ILoggerFactory loggerFactory)
-        : base(loggerFactory.CreateLogger<YoukuApi>())
+    /// <param name="loggerFactory">The <see cref="ILogManager"/>.</param>
+    public YoukuApi(ILogManager loggerFactory)
+        : base(loggerFactory.GetLogger(typeof(YoukuApi).Name))
     {
     }
 

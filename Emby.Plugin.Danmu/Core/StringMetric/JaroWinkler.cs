@@ -24,11 +24,10 @@
 
 using System;
 using System.Linq;
-// ReSharper disable SuggestVarOrType_Elsewhere
-// ReSharper disable LoopCanBeConvertedToQuery
 
-namespace StringMetric
+namespace Emby.Plugin.Danmu.Core.StringMetric
 {
+    /// <summary>
     /// The Jaro–Winkler distance metric is designed and best suited for short
     /// strings such as person names, and to detect typos; it is (roughly) a
     /// variation of Damerau-Levenshtein, where the substitution of 2 close
@@ -37,6 +36,7 @@ namespace StringMetric
     /// Jaro-Winkler was developed in the area of record linkage (duplicate
     /// detection) (Winkler, 1990). It returns a value in the interval [0.0, 1.0].
     /// The distance is computed as 1 - Jaro-Winkler similarity.
+    /// </summary>
     public class JaroWinkler
     {
         private const double DEFAULT_THRESHOLD = 0.7;
@@ -132,8 +132,6 @@ namespace StringMetric
             }
             int range = Math.Max(max.Length / 2 - 1, 0);
 
-            //int[] matchIndexes = new int[min.Length];
-            //Arrays.fill(matchIndexes, -1);
             int[] match_indexes = Enumerable.Repeat(-1, min.Length).ToArray();
 
             bool[] match_flags = new bool[max.Length];
@@ -195,3 +193,4 @@ namespace StringMetric
         }
     }
 }
+

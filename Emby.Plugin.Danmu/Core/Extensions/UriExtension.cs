@@ -16,3 +16,4 @@ namespace Emby.Plugin.Danmu.Core.Extensions
         }
     }
 }
+

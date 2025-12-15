@@ -1,4 +1,5 @@
 using System;
+using Emby.Plugin.Danmu.Core.Extensions;
 using System.Collections.Generic;
 using System.Net;
 using System.Net.Http.Json;
@@ -6,7 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Web;
 using Microsoft.Extensions.Caching.Memory;
-using Microsoft.Extensions.Logging;
+using MediaBrowser.Model.Logging;
 using Emby.Plugin.Danmu.Scrapers.DanmuApi.Entity;
 using Emby.Plugin.Danmu.Configuration;
 using RateLimiter;
@@ -49,9 +50,9 @@ public class DanmuApiApi : AbstractApi
     /// <summary>
     /// Initializes a new instance of the <see cref="DanmuApiApi"/> class.
     /// </summary>
-    /// <param name="loggerFactory">The <see cref="ILoggerFactory"/>.</param>
-    public DanmuApiApi(ILoggerFactory loggerFactory)
-        : base(loggerFactory.CreateLogger<DanmuApiApi>())
+    /// <param name="loggerFactory">The <see cref="ILogManager"/>.</param>
+    public DanmuApiApi(ILogManager loggerFactory)
+        : base(loggerFactory.GetLogger(typeof(DanmuApiApi).Name))
     {
         httpClient.DefaultRequestHeaders.Add("Accept", "application/json");
         httpClient.Timeout = TimeSpan.FromSeconds(30);
@@ -173,7 +174,7 @@ public class DanmuApiApi : AbstractApi
                     }
                     else
                     {
-                        _logger.LogError("DanmuApi 获取弹幕遇到429限流,已达到最大重试次数: {CommentId}", commentId);
+                        _logger.LogError("DanmuApi 获取弹幕遇到429限流,已达到最大重试次数: {0}", commentId);
                         break;
                     }
                 }

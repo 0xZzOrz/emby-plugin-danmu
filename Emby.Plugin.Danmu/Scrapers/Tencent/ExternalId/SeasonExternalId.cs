@@ -15,15 +15,12 @@ namespace Emby.Plugin.Danmu.Scrapers.Tencent.ExternalId
     public class SeasonExternalId : IExternalId
     {
         /// <inheritdoc />
-        public string ProviderName => Tencent.ScraperProviderName;
+        public string Name => Tencent.ScraperProviderName;
 
         /// <inheritdoc />
         public string Key => Tencent.ScraperProviderId;
         /// <inheritdoc />
-        public string Name => ProviderName;
-
-        /// <inheritdoc />
-        public string? UrlFormatString => null;
+        public string UrlFormatString => "https://example.com/season/{0}";
 
         /// <inheritdoc />
 
