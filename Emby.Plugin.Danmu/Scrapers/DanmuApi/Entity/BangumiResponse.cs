@@ -1,9 +1,44 @@
+using System;
 using System.Collections.Generic;
+using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 
 namespace Emby.Plugin.Danmu.Scrapers.DanmuApi.Entity
 {
+    /// <summary>
+    /// JSON 转换器：将数字或字符串转换为字符串
+    /// </summary>
+    public class StringOrNumberConverter : JsonConverter<string>
+    {
+        public override string Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+        {
+            if (reader.TokenType == JsonTokenType.Number)
+            {
+                // 如果是数字，转换为字符串
+                if (reader.TryGetInt64(out long longValue))
+                {
+                    return longValue.ToString();
+                }
+                if (reader.TryGetDouble(out double doubleValue))
+                {
+                    return ((long)doubleValue).ToString();
+                }
+            }
+            else if (reader.TokenType == JsonTokenType.String)
+            {
+                // 如果已经是字符串，直接返回
+                return reader.GetString() ?? string.Empty;
+            }
+            
+            throw new JsonException($"无法将 {reader.TokenType} 转换为字符串");
+        }
+
+        public override void Write(Utf8JsonWriter writer, string value, JsonSerializerOptions options)
+        {
+            writer.WriteStringValue(value);
+        }
+    }
     public class BangumiResponse
     {
         [JsonPropertyName("errorCode")]
@@ -95,7 +130,10 @@ namespace Emby.Plugin.Danmu.Scrapers.DanmuApi.Entity
         [JsonPropertyName("seasonId")]
         public string SeasonId { get; set; } = string.Empty;
 
+        // API 返回的是数字类型，但我们需要字符串形式
+        // 使用自定义转换器处理数字和字符串两种情况
         [JsonPropertyName("episodeId")]
+        [JsonConverter(typeof(StringOrNumberConverter))]
         public string EpisodeId { get; set; } = string.Empty;
 
         [JsonPropertyName("episodeTitle")]

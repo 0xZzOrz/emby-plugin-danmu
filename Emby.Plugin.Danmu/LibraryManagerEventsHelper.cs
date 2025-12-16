@@ -31,7 +31,7 @@ public class LibraryManagerEventsHelper : IDisposable
     private readonly ILogger _logger;
     private readonly Emby.Plugin.Danmu.Core.IFileSystem _fileSystem;
     private Timer _queueTimer;
-    private readonly ScraperManager _scraperManager;
+    private ScraperManager _scraperManager; // 改为非 readonly，允许在运行时切换实例
 
     public PluginConfiguration Config
     {
@@ -56,7 +56,37 @@ public class LibraryManagerEventsHelper : IDisposable
         _libraryManager = libraryManager;
         _logger = logManager.GetLogger(GetType().Name);
         _fileSystem = Core.FileSystem.instant;
-        _scraperManager = scraperManager;
+
+        // 优先使用 Plugin 中已注册弹幕源的实例
+        _scraperManager = Core.SingletonManager.ScraperManager ?? scraperManager;
+
+        // 如果注入实例为空或未注册任何弹幕源，尝试切换到 SingletonManager 中的实例
+        if ((_scraperManager?.AllWithNoEnabled()?.Count ?? 0) == 0 && Core.SingletonManager.ScraperManager != null)
+        {
+            _logger.Warn("注入的 ScraperManager 未注册弹幕源，改用 SingletonManager 中的实例");
+            _scraperManager = Core.SingletonManager.ScraperManager;
+        }
+
+        _logger.Info("LibraryManagerEventsHelper 初始化: ScraperManager 内部注册数量={0}",
+            _scraperManager?.AllWithNoEnabled()?.Count ?? 0);
+    }
+
+    /// <summary>
+    /// 确保 _scraperManager 指向已注册弹幕源的实例
+    /// </summary>
+    private ScraperManager EnsureScraperManagerReady()
+    {
+        if (_scraperManager == null || (_scraperManager.AllWithNoEnabled()?.Count ?? 0) == 0)
+        {
+            var singletonSm = Core.SingletonManager.ScraperManager;
+            if (singletonSm != null && (singletonSm.AllWithNoEnabled()?.Count ?? 0) > 0)
+            {
+                _logger.Warn("当前 ScraperManager 未注册弹幕源，切换到 SingletonManager 中的实例");
+                _scraperManager = singletonSm;
+            }
+        }
+
+        return _scraperManager;
     }
 
     /// <summary>
@@ -66,13 +96,55 @@ public class LibraryManagerEventsHelper : IDisposable
     /// <param name="eventType">The <see cref="EventType"/>.</param>
     public void QueueItem(BaseItem item, EventType eventType)
     {
+        if (item == null)
+        {
+            throw new ArgumentNullException(nameof(item));
+        }
+
+        // 确保使用已注册弹幕源的 ScraperManager
+        EnsureScraperManagerReady();
+
+        // 对于强制事件(手动搜索触发)，立即同步处理，不等待定时器
+        if (eventType == EventType.Force)
+        {
+            _logger.Info("立即处理强制下载任务: {0} (ItemId={1})", item.Name, item.Id);
+            var libraryEvent = new LibraryEvent { Item = item, EventType = eventType };
+            
+            // 同步处理，直接等待完成
+            try
+            {
+                _logger.Info("强制下载任务处理开始: {0} (ItemId={1})", item.Name, item.Id);
+                
+                if (item is Movie)
+                {
+                    _logger.Info("开始处理电影强制下载任务: {0}", item.Name);
+                    // 使用 GetAwaiter().GetResult() 同步等待异步方法
+                    ProcessQueuedMovieEvents(new[] { libraryEvent }, EventType.Force).GetAwaiter().GetResult();
+                    _logger.Info("电影强制下载任务处理完成: {0}", item.Name);
+                }
+                else if (item is Episode)
+                {
+                    _logger.Info("开始处理剧集强制下载任务: {0}", item.Name);
+                    // 使用 GetAwaiter().GetResult() 同步等待异步方法
+                    ProcessQueuedEpisodeEvents(new[] { libraryEvent }, EventType.Force).GetAwaiter().GetResult();
+                    _logger.Info("剧集强制下载任务处理完成: {0}", item.Name);
+                }
+                else
+                {
+                    _logger.Warn("不支持的项目类型，跳过处理: {0} (Type={1})", item.Name, item.GetType().Name);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogErrorException("处理强制下载任务时发生异常: {0}", ex, item.Name);
+            }
+            
+            return;
+        }
+
+        // 对于其他事件类型(Add, Update)，使用现有的延迟队列逻辑
         lock (_queuedEvents)
         {
-            if (item == null)
-            {
-                throw new ArgumentNullException(nameof(item));
-            }
-
             var libraryEvent = new LibraryEvent { Item = item, EventType = eventType };
             
             // 检查队列中是否已存在相同的事件
@@ -244,7 +316,7 @@ public class LibraryManagerEventsHelper : IDisposable
         var libraryOptions = _libraryManager.GetLibraryOptions(item);
         if (libraryOptions != null && libraryOptions.DisabledSubtitleFetchers.Contains(Plugin.Instance?.Name))
         {
-            this._logger.Info($"媒体库已关闭danmu插件, 忽略处理[{item.Name}].");
+            this._logger.LogInformation($"媒体库已关闭danmu插件, 忽略处理[{item.Name}].");
             return true;
         }
 
@@ -362,36 +434,90 @@ public class LibraryManagerEventsHelper : IDisposable
         // 强制刷新指定来源弹幕
         if (eventType == EventType.Force)
         {
+            _logger.Info("开始处理强制下载任务，共 {0} 个电影", movies.Count);
+
+            // 确保使用已注册弹幕源的 ScraperManager
+            EnsureScraperManagerReady();
+
+            // 检查 ScraperManager 是否可用
+            if (_scraperManager == null)
+            {
+                _logger.Error("ScraperManager 为 null，无法处理强制下载任务");
+                return;
+            }
+
+            var allScrapers = _scraperManager.All();
+            _logger.Info("可用的弹幕源数量: {0}", allScrapers.Count);
+            if (allScrapers.Count == 0)
+            {
+                _logger.Warn("没有可用的弹幕源，请检查插件配置");
+            }
+            
             foreach (var queueItem in movies)
             {
+                _logger.Info("处理强制下载任务: {0} (ItemId={1})", queueItem.Name, queueItem.Id);
+                _logger.Info("项目 ProviderIds: {0}", string.Join(", ", queueItem.ProviderIds.Select(p => $"{p.Key}={p.Value}")));
+                
                 // 找到选择的scraper
-                var scraper = _scraperManager.All().FirstOrDefault(x => queueItem.ProviderIds.ContainsKey(x.ProviderId));
+                var scraper = allScrapers.FirstOrDefault(x => queueItem.ProviderIds.ContainsKey(x.ProviderId));
                 if (scraper == null)
                 {
+                    _logger.Warn("未找到匹配的弹幕源，跳过处理: {0} (ProviderIds={1})", 
+                        queueItem.Name, string.Join(", ", queueItem.ProviderIds.Keys));
                     continue;
                 }
+
+                _logger.Info("找到弹幕源: {0} (ProviderId={1})", scraper.Name, scraper.ProviderId);
 
                 // 获取选择的弹幕Id
                 var mediaId = queueItem.GetProviderId(scraper.ProviderId);
                 if (string.IsNullOrEmpty(mediaId))
                 {
+                    _logger.Warn("未找到弹幕媒体ID，跳过处理: {0}", queueItem.Name);
                     continue;
                 }
 
+                _logger.Info("弹幕媒体ID: {0}", mediaId);
+
                 // 获取最新的item数据
                 var item = _libraryManager.GetItemById(queueItem.Id);
-                var media = await scraper.GetMedia(item, mediaId);
-                if (media != null)
+                if (item == null)
                 {
-                    await this.ForceSaveProviderId(item, scraper.ProviderId, media.Id);
+                    _logger.Warn("无法从媒体库获取项目，跳过处理: ItemId={0}", queueItem.Id);
+                    continue;
+                }
 
-                    var episode = await scraper.GetMediaEpisode(item, media.Id);
-                    if (episode != null)
+                _logger.Info("获取到媒体项: {0} (Path={1})", item.Name, item.Path ?? "null");
+
+                try
+                {
+                    var media = await scraper.GetMedia(item, mediaId).ConfigureAwait(false);
+                    if (media != null)
                     {
-                        // 下载弹幕xml文件
-                        await this.DownloadDanmu(scraper, item, episode.CommentId, true).ConfigureAwait(false);
-                    }
+                        _logger.Info("获取到媒体信息: MediaId={0}, CommentId={1}", media.Id, media.CommentId);
+                        await this.ForceSaveProviderId(item, scraper.ProviderId, media.Id).ConfigureAwait(false);
 
+                        var episode = await scraper.GetMediaEpisode(item, media.Id).ConfigureAwait(false);
+                        if (episode != null)
+                        {
+                            _logger.Info("开始下载弹幕: {0} (CommentId={1})", item.Name, episode.CommentId);
+                            // 下载弹幕xml文件
+                            await this.DownloadDanmu(scraper, item, episode.CommentId, true).ConfigureAwait(false);
+                            _logger.Info("弹幕下载完成: {0}", item.Name);
+                        }
+                        else
+                        {
+                            _logger.Warn("无法获取剧集信息，跳过下载: {0}", item.Name);
+                        }
+                    }
+                    else
+                    {
+                        _logger.Warn("无法获取媒体信息，跳过下载: {0} (MediaId={1})", item.Name, mediaId);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogErrorException("处理强制下载任务时发生错误: {0}", ex, item.Name);
                 }
             }
         }
@@ -762,42 +888,83 @@ public class LibraryManagerEventsHelper : IDisposable
         // 强制刷新指定来源弹幕（手动搜索强刷忽略集数不一致处理）
         if (eventType == EventType.Force)
         {
+            _logger.Info("开始处理强制下载任务，共 {0} 个剧集", items.Count);
+
+            // 确保使用已注册弹幕源的 ScraperManager
+            EnsureScraperManagerReady();
+
+            // 检查 ScraperManager 是否可用
+            if (_scraperManager == null)
+            {
+                _logger.Error("ScraperManager 为 null，无法处理强制下载任务");
+                return;
+            }
+
+            var allScrapers = _scraperManager.All();
+            _logger.Info("可用的弹幕源数量: {0}", allScrapers.Count);
+            if (allScrapers.Count == 0)
+            {
+                _logger.Warn("没有可用的弹幕源，请检查插件配置");
+            }
+            
             foreach (var queueItem in items)
             {
+                _logger.Info("处理强制下载任务: {0} (ItemId={1})", queueItem.Name, queueItem.Id);
+                _logger.Info("项目 ProviderIds: {0}", string.Join(", ", queueItem.ProviderIds.Select(p => $"{p.Key}={p.Value}")));
+                
                 // 找到选择的scraper
-                var scraper = _scraperManager.All().FirstOrDefault(x => queueItem.ProviderIds.ContainsKey(x.ProviderId));
+                var scraper = allScrapers.FirstOrDefault(x => queueItem.ProviderIds.ContainsKey(x.ProviderId));
                 if (scraper == null)
                 {
+                    _logger.Warn("未找到匹配的弹幕源，跳过处理: {0} (ProviderIds={1})", 
+                        queueItem.Name, string.Join(", ", queueItem.ProviderIds.Keys));
                     continue;
                 }
+
+                _logger.Info("找到弹幕源: {0} (ProviderId={1})", scraper.Name, scraper.ProviderId);
 
                 // 获取选择的弹幕Id
                 var mediaId = queueItem.GetProviderId(scraper.ProviderId);
                 if (string.IsNullOrEmpty(mediaId))
                 {
+                    _logger.Warn("未找到弹幕媒体ID，跳过处理: {0}", queueItem.Name);
                     continue;
                 }
 
+                _logger.Info("弹幕媒体ID: {0}", mediaId);
 
                 // 获取最新的item数据
                 var item = _libraryManager.GetItemById(queueItem.Id);
-                var season = ((Episode)item).Season;
-                if (season == null)
+                if (item == null)
                 {
+                    _logger.Warn("无法从媒体库获取项目，跳过处理: ItemId={0}", queueItem.Id);
                     continue;
                 }
 
-                var media = await scraper.GetMedia(season, mediaId);
-                if (media != null)
+                var season = ((Episode)item).Season;
+                if (season == null)
                 {
-                    // 更新季元数据
-                    await ForceSaveProviderId(season, scraper.ProviderId, media.Id);
+                    _logger.Warn("无法获取季信息，跳过处理: {0}", item.Name);
+                    continue;
+                }
 
-                    // 更新所有剧集元数据，GetEpisodes一定要取所有fields，要不然更新会导致重建虚拟season季信息
-                    var episodeList = season.GetEpisodes().Items;
-                    foreach (var (episode, idx) in episodeList.Reverse().WithIndex())
+                _logger.Info("获取到媒体项: {0} (Path={1}, Season={2})", item.Name, item.Path ?? "null", season.Name);
+
+                try
+                {
+                    var media = await scraper.GetMedia(season, mediaId).ConfigureAwait(false);
+                    if (media != null)
                     {
-                        var fileName = Path.GetFileName(episode.Path);
+                        _logger.Info("获取到媒体信息: MediaId={0}, EpisodeCount={1}", media.Id, media.Episodes?.Count ?? 0);
+                        // 更新季元数据
+                        await ForceSaveProviderId(season, scraper.ProviderId, media.Id).ConfigureAwait(false);
+
+                        // 更新所有剧集元数据，GetEpisodes一定要取所有fields，要不然更新会导致重建虚拟season季信息
+                        var episodeList = season.GetEpisodes().Items;
+                        _logger.Info("开始处理剧集列表，共 {0} 集", episodeList.Count());
+                        foreach (var (episode, idx) in episodeList.Reverse().WithIndex())
+                        {
+                            var fileName = Path.GetFileName(episode.Path);
 
                         // 没对应剧集号的，忽略处理
                         var indexNumber = episode.IndexNumber ?? 0;
@@ -823,12 +990,23 @@ public class LibraryManagerEventsHelper : IDisposable
                         var epId = media.Episodes[indexNumber - 1].Id;
                         var commentId = media.Episodes[indexNumber - 1].CommentId;
 
+                        _logger.Info("开始下载弹幕: {0}.{1} (CommentId={2})", episode.IndexNumber, episode.Name, commentId);
                         // 下载弹幕xml文件
                         await this.DownloadDanmu(scraper, episode, commentId, true).ConfigureAwait(false);
+                        _logger.Info("弹幕下载完成: {0}.{1}", episode.IndexNumber, episode.Name);
 
                         // 更新剧集元数据
                         await ForceSaveProviderId(episode, scraper.ProviderId, epId);
                     }
+                    }
+                    else
+                    {
+                        _logger.Warn("无法获取媒体信息，跳过下载: {0} (MediaId={1})", season.Name, mediaId);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogErrorException("处理强制下载任务时发生错误: {0}", ex, item.Name);
                 }
             }
         }
@@ -886,6 +1064,9 @@ public class LibraryManagerEventsHelper : IDisposable
     {
         // 下载弹幕xml文件
         var checkDownloadedKey = $"{item.Id}_{commentId}";
+        _logger.Info("[{0}]DownloadDanmu 方法开始: name={1}.{2}, commentId={3}, ignoreCheck={4}", 
+            scraper.Name, item.IndexNumber ?? 1, item.Name, commentId, ignoreCheck);
+        
         try
         {
             // 弹幕5分钟内更新过，忽略处理（有时Update事件会重复执行）
@@ -895,8 +1076,11 @@ public class LibraryManagerEventsHelper : IDisposable
                 return;
             }
 
+            _logger.Info("[{0}]开始获取弹幕内容: name={1}.{2}, commentId={3}", scraper.Name, item.IndexNumber ?? 1, item.Name);
             _memoryCache.Set(checkDownloadedKey, true, _danmuUpdatedExpiredOption);
-            var danmaku = await scraper.GetDanmuContent(item, commentId);
+            var danmaku = await scraper.GetDanmuContent(item, commentId).ConfigureAwait(false);
+            _logger.Info("[{0}]获取弹幕内容完成: name={1}.{2}, danmaku={3}", 
+                scraper.Name, item.IndexNumber ?? 1, item.Name, danmaku != null ? "非空" : "null");
             if (danmaku != null)
             {
                 if (danmaku.Items.Count <= 0)
@@ -912,8 +1096,18 @@ public class LibraryManagerEventsHelper : IDisposable
                     _logger.Info("[{0}]弹幕内容少于1KB，可能是已失效弹幕，忽略处理：{1}.{2}", scraper.Name, item.IndexNumber, item.Name);
                     return;
                 }
-                await this.SaveDanmu(item, bytes);
+                _logger.Info("[{0}]开始保存弹幕文件: name={1}.{2}, bytes长度={3}", 
+                    scraper.Name, item.IndexNumber ?? 1, item.Name, bytes.Length);
+                var savedPaths = await this.SaveDanmu(item, bytes).ConfigureAwait(false);
                 this._logger.Info("[{0}]弹幕下载成功：name={1}.{2} commentId={3}", scraper.Name, item.IndexNumber ?? 1, item.Name, commentId);
+                if (!string.IsNullOrEmpty(savedPaths))
+                {
+                    this._logger.Info("[{0}]弹幕文件保存路径：{1}", scraper.Name, savedPaths);
+                }
+                else
+                {
+                    this._logger.Warn("[{0}]弹幕文件保存路径为空", scraper.Name);
+                }
             }
             else
             {
@@ -923,7 +1117,9 @@ public class LibraryManagerEventsHelper : IDisposable
         catch (Exception ex)
         {
             _memoryCache.Remove(checkDownloadedKey);
-            _logger.LogErrorException("[{0}]Exception handled download danmu file. name={1}", scraper.Name, item.Name, ex);
+            _logger.LogErrorException("[{0}]DownloadDanmu 方法发生异常: name={1}, commentId={2}", 
+                scraper.Name, item.Name, commentId, ex);
+            throw; // 重新抛出异常，让调用者知道发生了错误
         }
     }
 
@@ -944,14 +1140,17 @@ public class LibraryManagerEventsHelper : IDisposable
         return diff.TotalSeconds < 300;
     }
 
-    private async Task SaveDanmu(BaseItem item, byte[] bytes)
+    private async Task<string> SaveDanmu(BaseItem item, byte[] bytes)
     {
         // 单元测试时为null
-        if (item.FileNameWithoutExtension == null) return;
+        if (item.FileNameWithoutExtension == null) return string.Empty;
+
+        var savedPaths = new List<string>();
 
         // 下载弹幕xml文件
         var danmuPath = Path.Combine(item.ContainingFolderPath, item.FileNameWithoutExtension + ".xml");
         await this._fileSystem.WriteAllBytesAsync(danmuPath, bytes, CancellationToken.None).ConfigureAwait(false);
+        savedPaths.Add(danmuPath);
 
         if (this.Config.ToAss && bytes.Length > 0)
         {
@@ -984,7 +1183,10 @@ public class LibraryManagerEventsHelper : IDisposable
 
             var assPath = Path.Combine(item.ContainingFolderPath, item.FileNameWithoutExtension + ".danmu.ass");
             Danmaku2Ass.Bilibili.GetInstance().Create(bytes, assConfig, assPath);
+            savedPaths.Add(assPath);
         }
+
+        return string.Join(", ", savedPaths);
     }
 
     private async Task ForceSaveProviderId(BaseItem item, string providerId, string providerVal)

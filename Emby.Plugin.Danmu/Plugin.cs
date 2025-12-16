@@ -48,6 +48,18 @@ namespace Emby.Plugin.Danmu
 
             scraperManager.Register(Scrapers);
             logger.Info("Danmu 插件加载完成, 支持 {0} 个弹幕源", Scrapers.Count);
+            
+            // 输出所有注册的 scrapers 信息
+            foreach (var scraper in Scrapers)
+            {
+                logger.Info("注册弹幕源: Name={0}, ProviderId={1}, DefaultEnable={2}", 
+                    scraper.Name, scraper.ProviderId, scraper.DefaultEnable);
+            }
+            
+            // 将注册了 scrapers 的 ScraperManager 实例保存到 SingletonManager
+            Core.SingletonManager.ScraperManager = scraperManager;
+            logger.Info("Danmu 插件: ScraperManager 已保存到 SingletonManager (内部注册数量={0})", 
+                scraperManager.AllWithNoEnabled().Count);
         }
 
         /// <inheritdoc />

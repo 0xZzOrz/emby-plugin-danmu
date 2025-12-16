@@ -4,7 +4,7 @@
 [![emby](https://img.shields.io/badge/emby-10.10.x|10.11.x-lightgrey?logo=emby)](https://github.com/cxfksword/emby-plugin-danmu/releases)
 [![LICENSE](https://img.shields.io/github/license/cxfksword/emby-plugin-danmu)](https://github.com/cxfksword/emby-plugin-danmu/main/LICENSE) 
 
-emby弹幕自动下载插件，已支持的弹幕来源：b站，~~弹弹play~~，优酷，爱奇艺，腾讯视频，芒果TV。
+Emby 弹幕自动下载插件（基于 .NET 8，适配 Emby 4.9+），已支持的弹幕来源：B站，弹弹play，优酷，爱奇艺，腾讯视频，芒果TV，弹幕API。
 
 支持功能：
 
@@ -17,15 +17,16 @@ emby弹幕自动下载插件，已支持的弹幕来源：b站，~~弹弹play~~�
 
 ## 安装插件
 
-添加插件存储库：
+1) 手动安装（推荐）
 
-国内加速：https://ghfast.top/https://github.com/cxfksword/emby-plugin-danmu/releases/download/manifest/manifest_cn.json
+- 从 Release 或本地构建产物中获取 `dist/Emby.Plugin.Danmu.dll` 文件
+- 拷贝到 Emby 插件目录：`/config/plugins/`（容器）或 `<Emby数据目录>/plugins/`
+- 重启 Emby
 
-国外访问：https://github.com/cxfksword/emby-plugin-danmu/releases/download/manifest/manifest.json
+2) 构建后手动部署
 
-> 如果都无法访问，可以直接从 [Release](https://github.com/cxfksword/emby-plugin-danmu/releases) 页面下载，并解压到 emby 插件目录中使用
-
-> emby 请使用 fengymi 维护的：https://github.com/fengymi/emby-plugin-danmu
+- 在仓库根目录执行 `./build-merged.sh`
+- 完成后将 `dist/Emby.Plugin.Danmu.dll` 文件拷贝到 Emby 插件目录并重启 Emby
 
 ## 如何使用
 
@@ -34,10 +35,10 @@ emby弹幕自动下载插件，已支持的弹幕来源：b站，~~弹弹play~~�
 
    <img src="doc/tutorial.png"  width="720px" />
 
-3. 新加入的影片会自动获取弹幕（只匹配番剧和电影视频），旧影片可以通过计划任务**扫描媒体库匹配弹幕**手动执行获取
-4. 假如弹幕匹配错误，请在电影或剧集中使用**修改字幕**功能搜索修正
-5. 对于电视剧或动画，需要保证每季视频集数一致，并正确填写集号，这样每季视频的弹幕才会自动获取
-6. 同时生成ass弹幕，需要在插件配置中打开，默认是关闭的
+3. 新加入的影片会自动获取弹幕（番剧/电影），旧影片可执行计划任务 **扫描媒体库匹配弹幕**
+4. 若匹配错误，可在影片详情使用 **修改字幕** 重新搜索
+5. 电视剧/动画需保证每季集数正确并填写集号
+6. 生成 ASS 需在插件配置中打开（默认关闭）
   
 > B站电影或季元数据也支持手动指定BV/AV号，来匹配UP主上传的视频弹幕。多P视频和剧集是按顺序一一对应匹配的，所以保证emby中剧集有正确的集号很重要
 
@@ -71,13 +72,16 @@ ass格式：
 
 1. Clone or download this repository
 
-2. Ensure you have .NET Core SDK 9.0 setup and installed
+2. Ensure you have .NET SDK 8.0 installed
 
-3. Build plugin with following command.
+3. Build (两种方式)
 
 ```sh
-dotnet restore 
+# 简单发布
 dotnet publish --configuration=Release Emby.Plugin.Danmu/Emby.Plugin.Danmu.csproj
+
+# 一键构建并合并依赖到 dist/
+./build-merged.sh
 ```
 
 
@@ -85,13 +89,14 @@ dotnet publish --configuration=Release Emby.Plugin.Danmu/Emby.Plugin.Danmu.cspro
 
 1. Build the plugin
 
-2. Create a folder, like `danmu` and copy  `./Emby.Plugin.Danmu/bin/Release/net9.0/Emby.Plugin.Danmu.dll` into it
-
-3. Move folder `danmu` to emby `data/plugins` folder
+2. 将 `dist/Emby.Plugin.Danmu.dll`（或 publish 输出目录）文件拷贝到 Emby `data/plugins` 目录
 
 ## Thanks
 
 [downkyi](https://github.com/leiurayer/downkyi)
+
+## 请喝咖啡
+<img src="./doc/image/支付宝.jpg"  width="100px" />
 
 
 ## 免责声明

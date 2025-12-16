@@ -19,17 +19,78 @@ if ! command -v dotnet &> /dev/null; then
     exit 1
 fi
 
+# 设置 DOTNET_ROOT（ilrepack 需要）
+if [ -z "$DOTNET_ROOT" ]; then
+    # 尝试从 dotnet --info 获取 Base Path
+    DOTNET_BASE_PATH=$(dotnet --info 2>/dev/null | grep -i "base path" | head -1 | sed 's/.*Base Path:[[:space:]]*//' | sed 's/[[:space:]]*$//')
+    if [ -n "$DOTNET_BASE_PATH" ]; then
+        # Base Path 通常是 .../libexec/sdk/版本，DOTNET_ROOT 应该是 libexec 目录
+        DOTNET_ROOT=$(echo "$DOTNET_BASE_PATH" | sed 's|/sdk/.*||')
+        if [ -d "$DOTNET_ROOT" ]; then
+            export DOTNET_ROOT
+            echo "信息: 设置 DOTNET_ROOT=$DOTNET_ROOT"
+        fi
+    fi
+    
+    # 如果仍然没有设置，尝试从 dotnet 路径推断
+    if [ -z "$DOTNET_ROOT" ]; then
+        DOTNET_PATH=$(which dotnet)
+        if [ -n "$DOTNET_PATH" ]; then
+            DOTNET_BIN_DIR=$(dirname "$DOTNET_PATH")
+            # 检查是否是 Homebrew 安装
+            if [[ "$DOTNET_BIN_DIR" == *"/opt/homebrew/opt/dotnet"* ]] || [[ "$DOTNET_BIN_DIR" == *"/usr/local/opt/dotnet"* ]]; then
+                # Homebrew 安装：DOTNET_ROOT 应该是 libexec 目录
+                DOTNET_ROOT=$(dirname "$DOTNET_BIN_DIR")/libexec
+            else
+                # 标准安装：DOTNET_ROOT 通常是 dotnet 的父目录
+                DOTNET_ROOT=$(dirname "$DOTNET_BIN_DIR")
+            fi
+            
+            if [ -d "$DOTNET_ROOT" ]; then
+                export DOTNET_ROOT
+                echo "信息: 设置 DOTNET_ROOT=$DOTNET_ROOT"
+            fi
+        fi
+    fi
+fi
+
 # 2. 检查 ilrepack 是否安装
-if ! command -v ilrepack &> /dev/null; then
+ILREPACK_CMD=""
+ILREPACK_PATH=""
+
+# 尝试找到 ilrepack
+if command -v ilrepack &> /dev/null; then
+    ILREPACK_PATH=$(which ilrepack)
+elif [ -f "$HOME/.dotnet/tools/ilrepack" ]; then
+    ILREPACK_PATH="$HOME/.dotnet/tools/ilrepack"
+    export PATH="$HOME/.dotnet/tools:$PATH"
+fi
+
+# 如果找不到，尝试安装
+if [ -z "$ILREPACK_PATH" ]; then
     echo "警告: 未找到 ilrepack 命令，尝试安装..."
     dotnet tool install -g dotnet-ilrepack || {
         echo "错误: 无法安装 dotnet-ilrepack，请手动安装:"
         echo "  dotnet tool install -g dotnet-ilrepack"
         exit 1
     }
-    # 添加到 PATH（如果工具安装在 ~/.dotnet/tools）
     export PATH="$HOME/.dotnet/tools:$PATH"
+    if [ -f "$HOME/.dotnet/tools/ilrepack" ]; then
+        ILREPACK_PATH="$HOME/.dotnet/tools/ilrepack"
+    elif command -v ilrepack &> /dev/null; then
+        ILREPACK_PATH=$(which ilrepack)
+    fi
 fi
+
+# 验证 ilrepack 是否存在
+if [ -z "$ILREPACK_PATH" ] || [ ! -f "$ILREPACK_PATH" ]; then
+    echo "错误: 无法找到 ilrepack 可执行文件"
+    exit 1
+fi
+
+# 设置 ILREPACK_CMD（使用完整路径）
+ILREPACK_CMD="$ILREPACK_PATH"
+echo "信息: 使用 ilrepack: $ILREPACK_CMD"
 
 # 3. 清理旧的发布目录
 echo ""
@@ -97,7 +158,7 @@ done
 MERGED_DLL="Emby.Plugin.Danmu.merged.dll"
 
 # 执行合并
-ilrepack /wildcards /parallel /ndebug /target:library \
+"$ILREPACK_CMD" /wildcards /parallel /ndebug /target:library \
     /out:"${MERGED_DLL}" \
     "${EXISTING_DLLS[@]}" || {
     echo "错误: ILRepack 合并失败"

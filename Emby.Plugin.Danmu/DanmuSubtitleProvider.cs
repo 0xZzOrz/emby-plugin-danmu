@@ -43,22 +43,35 @@ namespace Emby.Plugin.Danmu
         public DanmuSubtitleProvider(
             ILibraryManager libraryManager,
             ILogManager logManager,
-            ScraperManager scraperManager)
+            ScraperManager scraperManager,
+            LibraryManagerEventsHelper libraryManagerEventsHelper = null)
         {
             _libraryManager = libraryManager;
             _logger = logManager.GetLogger(GetType().Name);
-            _scraperManager = scraperManager;
-            _libraryManagerEventsHelper = Core.SingletonManager.LibraryManagerEventsHelper;
+            // 使用 SingletonManager 中的 ScraperManager，确保使用的是注册了 scrapers 的实例
+            _scraperManager = Core.SingletonManager.ScraperManager ?? scraperManager;
+            _libraryManagerEventsHelper = libraryManagerEventsHelper ?? Core.SingletonManager.LibraryManagerEventsHelper;
             _memoryCache = new MemoryCache(new MemoryCacheOptions());
+            
+            _logger.Info("DanmuSubtitleProvider 初始化: ScraperManager={0}, LibraryManagerEventsHelper={1}", 
+                _scraperManager != null ? "非空" : "null",
+                _libraryManagerEventsHelper != null ? "非空" : "null");
+            
+            if (_scraperManager != null)
+            {
+                var allScrapers = _scraperManager.AllWithNoEnabled();
+                _logger.Info("DanmuSubtitleProvider 初始化: 内部注册的 scrapers 数量={0}", allScrapers?.Count ?? 0);
+            }
         }
 
         public async Task<SubtitleResponse> GetSubtitles(string id, CancellationToken cancellationToken)
         {
-            _logger.Info("开始查询弹幕 id={0}", id);
+            _logger.Info("开始查询弹幕 GetSubtitles id={0}", id);
             if (_memoryCache.TryGetValue(id, out bool has))
             {
                 if (has)
                 {
+                    _logger.Info("弹幕下载任务已存在，跳过重复请求");
                     throw new CanIgnoreException($"已经触发下载了，无需重试");
                 }
             }
@@ -68,45 +81,49 @@ namespace Emby.Plugin.Danmu
             var info = id.FromJson<SubtitleId>();
             if (info == null)
             {
+                _logger.Error("无法解析弹幕ID信息");
                 throw new ArgumentException();
             }
 
             var item = _libraryManager.GetItemById(info.ItemId);
             if (item == null)
             {
+                _logger.Error("未找到媒体项 ItemId={0}", info.ItemId);
                 throw new ArgumentException();
             }
 
             var scraper = _scraperManager.All().FirstOrDefault(x => x.ProviderId == info.ProviderId);
             if (scraper != null)
             {
+                _logger.Info("找到弹幕源 {0}，开始下载弹幕 ItemId={1}, MediaId={2}", scraper.Name, info.ItemId, info.Id);
                 // 创建一个临时的 BaseItem 来传递 ProviderId，避免直接修改原始库项目
                 var tempItem = CreateTemporaryItemWithProviderId(item, scraper.ProviderId, info.Id);
                 if (tempItem != null)
                 {
                     _libraryManagerEventsHelper.QueueItem(tempItem, EventType.Force);
+                    _logger.Info("弹幕下载任务已加入队列: {0}", item.Name);
                 }
+                else
+                {
+                    _logger.Warn("无法创建临时媒体项，跳过弹幕下载");
+                }
+            }
+            else
+            {
+                _logger.Warn("未找到弹幕源 ProviderId={0}", info.ProviderId);
             }
 
             _memoryCache.Set<bool>(id, true, _pendingDanmuDownloadExpiredOption);
+            // 这是预期的异常，用于告知 Emby 任务已在后台开始下载
+            // 注意：Emby 会将此异常记录为错误，但这是正常的工作流程，不影响功能
+            _logger.Info("弹幕下载任务已启动，返回提示信息（后续的错误日志是预期的，可忽略）");
             throw new CanIgnoreException($"'{item.Name}' 的弹幕任务已在后台开始下载，请稍后查看");
         }
 
         public async Task<IEnumerable<RemoteSubtitleInfo>> Search(SubtitleSearchRequest request, CancellationToken cancellationToken)
         {
-            // 防御：核心依赖未就绪时直接返回
-            if (_scraperManager == null)
-            {
-                _logger.Warn("ScraperManager is null, skip danmu search.");
-                return Array.Empty<RemoteSubtitleInfo>();
-            }
-
-            // LibraryManagerEventsHelper 可能尚未在构造阶段注入完成
-            if (_libraryManagerEventsHelper == null)
-            {
-                _logger.Warn("LibraryManagerEventsHelper is null, skip danmu search.");
-                return Array.Empty<RemoteSubtitleInfo>();
-            }
+            _logger.Info("弹幕搜索开始 Search: MediaPath={0}, SeriesName={1}, Language={2}",
+                request.MediaPath, request.SeriesName, request.Language);
 
             if (request.Language == "zh-CN" || request.Language == "zh-TW" || request.Language == "zh-HK")
             {
@@ -130,12 +147,17 @@ namespace Emby.Plugin.Danmu
 
             if (item == null)
             {
+                _logger.Info("弹幕搜索: 未找到对应的媒体项 MediaPath={0}", request.MediaPath);
                 return list;
             }
+
+            _logger.Info("弹幕搜索: 找到媒体项 ItemId={0}, Name={1}, Type={2}", 
+                item.Id, item.Name, item.GetType().Name);
 
             // 媒体库未启用就不处理
             if (_libraryManagerEventsHelper != null && _libraryManagerEventsHelper.IsIgnoreItem(item))
             {
+                _logger.Info("弹幕搜索: 媒体库已关闭danmu插件，跳过处理 ItemId={0}, Name={1}", item.Id, item.Name);
                 return list;
             }
 
@@ -146,7 +168,31 @@ namespace Emby.Plugin.Danmu
             }
 
             // 并行执行所有scraper的搜索
-            var searchTasks = _scraperManager.All()?.Select(async scraper =>
+            var allScrapers = _scraperManager.All();
+            if (allScrapers == null || allScrapers.Count == 0)
+            {
+                _logger.Warn("弹幕搜索: 没有可用的弹幕源");
+                _logger.Warn("弹幕搜索: ScraperManager 状态 - _scraperManager={0}, Plugin.Instance={1}, Configuration={2}", 
+                    _scraperManager != null ? "非空" : "null",
+                    Plugin.Instance != null ? "非空" : "null",
+                    Plugin.Instance?.Configuration != null ? "非空" : "null");
+                if (Plugin.Instance?.Configuration?.Scrapers != null)
+                {
+                    _logger.Warn("弹幕搜索: 配置中的 Scrapers 数量={0}", Plugin.Instance.Configuration.Scrapers.Length);
+                    foreach (var config in Plugin.Instance.Configuration.Scrapers)
+                    {
+                        _logger.Warn("弹幕搜索: 配置项 - Name={0}, Enable={1}", config.Name, config.Enable);
+                    }
+                }
+                return list;
+            }
+
+            _logger.Info("弹幕搜索: 开始搜索，共 {0} 个弹幕源", allScrapers.Count);
+            foreach (var scraper in allScrapers)
+            {
+                _logger.Info("弹幕搜索: 可用弹幕源 - {0}", scraper.Name);
+            }
+            var searchTasks = allScrapers.Select(async scraper =>
             {
                 try
                 {
@@ -206,6 +252,9 @@ namespace Emby.Plugin.Danmu
             {
                 list.AddRange(subtitles);
             }
+
+            _logger.Info("弹幕搜索: 搜索完成，共找到 {0} 个结果 ItemId={1}, Name={2}", 
+                list.Count, item.Id, item.Name);
 
             return list;
         }
