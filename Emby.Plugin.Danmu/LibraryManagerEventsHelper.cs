@@ -962,8 +962,14 @@ public class LibraryManagerEventsHelper : IDisposable
                         // 更新所有剧集元数据，GetEpisodes一定要取所有fields，要不然更新会导致重建虚拟season季信息
                         var episodeList = season.GetEpisodes().Items;
                         _logger.Info("开始处理剧集列表，共 {0} 集", episodeList.Count());
-                        // 使用 LINQ 反转，避免 List<T>.Reverse() 返回 void 无法继续链式调用
-                        foreach (var (episode, idx) in episodeList.AsEnumerable().Reverse().WithIndex())
+
+                        if (media.Episodes == null || media.Episodes.Count == 0)
+                        {
+                            _logger.Warn("[{0}]媒体信息缺少剧集列表，跳过处理. [{1}]", scraper.Name, season.Name);
+                            continue;
+                        }
+
+                        foreach (var episode in episodeList.AsEnumerable().Reverse())
                         {
                             var fileName = Path.GetFileName(episode.Path);
 
