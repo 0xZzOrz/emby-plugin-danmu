@@ -704,8 +704,15 @@ public class LibraryManagerEventsHelper : IDisposable
                             break;
                         }
 
-                        foreach (var (episode, idx) in episodes.AsEnumerable().Reverse().WithIndex())
+                        if (media.Episodes == null || media.Episodes.Count == 0)
                         {
+                            _logger.Info("[{0}]获取不到剧集列表，跳过处理. Season={1}", scraper.Name, season.Name);
+                            break;
+                        }
+
+                        for (var idx = episodes.Count - 1; idx >= 0; idx--)
+                        {
+                            var episode = episodes[idx];
                             var fileName = Path.GetFileName(episode.Path);
                             var indexNumber = episode.IndexNumber ?? 0;
                             if (indexNumber <= 0)
@@ -960,8 +967,8 @@ public class LibraryManagerEventsHelper : IDisposable
                         await ForceSaveProviderId(season, scraper.ProviderId, media.Id).ConfigureAwait(false);
 
                         // 更新所有剧集元数据，GetEpisodes一定要取所有fields，要不然更新会导致重建虚拟season季信息
-                        var episodeList = season.GetEpisodes().Items;
-                        _logger.Info("开始处理剧集列表，共 {0} 集", episodeList.Count());
+                        var episodeList = season.GetEpisodes().Items?.OfType<Episode>().ToList() ?? new List<Episode>();
+                        _logger.Info("开始处理剧集列表，共 {0} 集", episodeList.Count);
 
                         if (media.Episodes == null || media.Episodes.Count == 0)
                         {
@@ -969,8 +976,9 @@ public class LibraryManagerEventsHelper : IDisposable
                             continue;
                         }
 
-                        foreach (var episode in episodeList.AsEnumerable().Reverse())
+                        for (var idx = episodeList.Count - 1; idx >= 0; idx--)
                         {
+                            var episode = episodeList[idx];
                             var fileName = Path.GetFileName(episode.Path);
 
                         // 没对应剧集号的，忽略处理
