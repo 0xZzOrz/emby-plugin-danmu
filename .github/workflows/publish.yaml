@@ -1,108 +1,28 @@
-name: Publish Emby Plugin
+name: "🏗️ Build Plugin"
 
 on:
-  push:
-    tags:
-      - 'v*'
   workflow_dispatch:
-    inputs:
-      version:
-        description: 'Version tag (e.g., v1.0.0)'
-        required: true
-        type: string
 
 jobs:
-  build-and-publish:
+  build-merged:
     runs-on: ubuntu-latest
-    
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
+      - name: Checkout
+        uses: actions/checkout@v4
 
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v4
-      with:
-        dotnet-version: '9.0.x'
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
 
-    - name: Restore dependencies
-      run: dotnet restore Emby.Plugin.Danmu/Emby.Plugin.Danmu.csproj
+      - name: Build merged package
+        run: |
+          chmod +x build-merged.sh
+          ./build-merged.sh
 
-    - name: Build plugin
-      run: dotnet build Emby.Plugin.Danmu/Emby.Plugin.Danmu.csproj --configuration Release --no-restore
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: emby-plugin-danmu
+          path: dist/
 
-    - name: Publish plugin
-      run: dotnet publish Emby.Plugin.Danmu/Emby.Plugin.Danmu.csproj --configuration Release --no-build -o ./publish
-
-    - name: Get version from tag
-      id: get_version
-      run: |
-        if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
-          VERSION="${{ github.event.inputs.version }}"
-        else
-          VERSION="${GITHUB_REF#refs/tags/}"
-        fi
-        VERSION_NUMBER=$(echo $VERSION | sed 's/^v//')
-        echo "version=$VERSION" >> $GITHUB_OUTPUT
-        echo "version_number=$VERSION_NUMBER" >> $GITHUB_OUTPUT
-        echo "Version: $VERSION"
-        echo "Version Number: $VERSION_NUMBER"
-
-    - name: Create plugin package
-      run: |
-        PLUGIN_NAME="Emby.Plugin.Danmu"
-        PLUGIN_DIR="danmu"
-        mkdir -p $PLUGIN_DIR
-        cp -r publish/* $PLUGIN_DIR/
-        zip -r "danmu_${{ steps.get_version.outputs.version_number }}.0.zip" $PLUGIN_DIR/
-        echo "Plugin package created: danmu_${{ steps.get_version.outputs.version_number }}.0.zip"
-
-    - name: Calculate checksum
-      id: checksum
-      run: |
-        CHECKSUM=$(md5sum danmu_${{ steps.get_version.outputs.version_number }}.0.zip | cut -d ' ' -f 1)
-        echo "checksum=$CHECKSUM" >> $GITHUB_OUTPUT
-        echo "Checksum: $CHECKSUM"
-
-    - name: Get changelog from tag
-      id: changelog
-      run: |
-        if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
-          CHANGELOG="Release ${{ github.event.inputs.version }}"
-        else
-          TAG="${GITHUB_REF#refs/tags/}"
-          CHANGELOG=$(git tag -l --format='%(contents)' $TAG 2>/dev/null || echo "Release $TAG")
-        fi
-        echo "changelog<<EOF" >> $GITHUB_OUTPUT
-        echo "$CHANGELOG" >> $GITHUB_OUTPUT
-        echo "EOF" >> $GITHUB_OUTPUT
-
-    - name: Create Release
-      uses: softprops/action-gh-release@v1
-      with:
-        files: |
-          danmu_${{ steps.get_version.outputs.version_number }}.0.zip
-        tag_name: ${{ steps.get_version.outputs.version }}
-        name: Release ${{ steps.get_version.outputs.version }}
-        body: |
-          ## Changes
-          ${{ steps.changelog.outputs.changelog }}
-          
-          ## Installation
-          1. Download the `danmu_${{ steps.get_version.outputs.version_number }}.0.zip` file
-          2. Extract it to a folder named `danmu` in your Emby plugins directory
-          3. Restart Emby server
-          
-          ## Checksum
-          MD5: `${{ steps.checksum.outputs.checksum }}`
-        draft: false
-        prerelease: false
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-    - name: Generate manifest (optional)
-      if: false  # Set to true if you need manifest generation
-      run: |
-        echo "Manifest generation would go here if needed"
-        # python3 scripts/generate_manifest.py danmu_${{ steps.get_version.outputs.version_number }}.0.zip ${{ steps.get_version.outputs.version }}
