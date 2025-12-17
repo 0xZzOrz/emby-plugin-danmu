@@ -2,6 +2,18 @@ name: "🏗️ Build Plugin"
 
 on:
   workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "发布 Tag，如 v1.2.3（留空则不创建 Release）"
+        required: false
+      release_name:
+        description: "Release 标题（可选）"
+        required: false
+  push:
+    branches: [ "main" ]
+    tags: [ "v*" ]
+  pull_request:
+    branches: [ "main" ]
 
 jobs:
   build-merged:
@@ -25,4 +37,16 @@ jobs:
         with:
           name: emby-plugin-danmu
           path: dist/
+
+      # 当手动触发且指定了 release_tag，或 push tag 时创建 Release 并上传 dist 下的全部文件
+      - name: Create Release & Upload assets
+        if: (github.event_name == 'workflow_dispatch' && github.event.inputs.release_tag != '') || (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/'))
+        uses: softprops/action-gh-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.release_tag != '' && github.event.inputs.release_tag || github.ref_name }}
+          name: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.release_name != '' && github.event.inputs.release_name || github.ref_name }}
+          files: |
+            dist/**
 
