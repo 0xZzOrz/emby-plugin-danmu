@@ -700,13 +700,13 @@ public class LibraryManagerEventsHelper : IDisposable
                         var media = await scraper.GetMedia(season, providerVal);
                         if (media == null)
                         {
-                            _logger.Info("[{0}]获取不到视频信息. ProviderId: {1}", scraper.Name, providerVal);
+                            _logger.Warn("[{0}]获取不到视频信息. ProviderId: {1}", scraper.Name, providerVal);
                             break;
                         }
 
                         if (media.Episodes == null || media.Episodes.Count == 0)
                         {
-                            _logger.Info("[{0}]获取不到剧集列表，跳过处理. Season={1}", scraper.Name, season.Name);
+                            _logger.Warn("[{0}]获取不到剧集列表，跳过处理. Season={1}", scraper.Name, season.Name);
                             break;
                         }
 
@@ -717,19 +717,19 @@ public class LibraryManagerEventsHelper : IDisposable
                             var indexNumber = episode.IndexNumber ?? 0;
                             if (indexNumber <= 0)
                             {
-                                _logger.Info("[{0}]匹配失败，缺少集号. [{1}]{2}", scraper.Name, season.Name, fileName);
+                                _logger.Debug("[{0}]匹配失败，缺少集号. [{1}]{2}", scraper.Name, season.Name, fileName);
                                 continue;
                             }
 
                             if (indexNumber > media.Episodes.Count)
                             {
-                                _logger.Info("[{0}]匹配失败，集号超过总集数，可能识别集号错误. [{1}]{2} indexNumber: {3}", scraper.Name, season.Name, fileName, indexNumber);
+                                _logger.Debug("[{0}]匹配失败，集号超过总集数，可能识别集号错误. [{1}]{2} indexNumber: {3}", scraper.Name, season.Name, fileName, indexNumber);
                                 continue;
                             }
 
                             if (this.Config.DownloadOption.EnableEpisodeCountSame && media.Episodes.Count != episodes.Count)
                             {
-                                _logger.Info("[{0}]刷新弹幕失败, 集数不一致。video: {1}.{2} 弹幕数：{3} 集数：{4}", scraper.Name, indexNumber, episode.Name, media.Episodes.Count, episodes.Count);
+                                _logger.Debug("[{0}]刷新弹幕失败, 集数不一致。video: {1}.{2} 弹幕数：{3} 集数：{4}", scraper.Name, indexNumber, episode.Name, media.Episodes.Count, episodes.Count);
                                 continue;
                             }
 
@@ -955,20 +955,20 @@ public class LibraryManagerEventsHelper : IDisposable
                     continue;
                 }
 
-                _logger.Info("获取到媒体项: {0} (Path={1}, Season={2})", item.Name, item.Path ?? "null", season.Name);
+                _logger.Debug("获取到媒体项: {0} (Path={1}, Season={2})", item.Name, item.Path ?? "null", season.Name);
 
                 try
                 {
                     var media = await scraper.GetMedia(season, mediaId).ConfigureAwait(false);
                     if (media != null)
                     {
-                        _logger.Info("获取到媒体信息: MediaId={0}, EpisodeCount={1}", media.Id, media.Episodes?.Count ?? 0);
+                        _logger.Debug("获取到媒体信息: MediaId={0}, EpisodeCount={1}", media.Id, media.Episodes?.Count ?? 0);
                         // 更新季元数据
                         await ForceSaveProviderId(season, scraper.ProviderId, media.Id).ConfigureAwait(false);
 
                         // 更新所有剧集元数据，GetEpisodes一定要取所有fields，要不然更新会导致重建虚拟season季信息
                         var episodeList = season.GetEpisodes().Items?.OfType<Episode>().ToList() ?? new List<Episode>();
-                        _logger.Info("开始处理剧集列表，共 {0} 集", episodeList.Count);
+                        _logger.Debug("开始处理剧集列表，共 {0} 集", episodeList.Count);
 
                         if (media.Episodes == null || media.Episodes.Count == 0)
                         {
@@ -985,20 +985,20 @@ public class LibraryManagerEventsHelper : IDisposable
                         var indexNumber = episode.IndexNumber ?? 0;
                         if (indexNumber < 1)
                         {
-                            _logger.Info("[{0}]缺少集号，忽略处理. [{1}]{2}", scraper.Name, season.Name, fileName);
+                            _logger.Debug("[{0}]缺少集号，忽略处理. [{1}]{2}", scraper.Name, season.Name, fileName);
                             continue;
                         }
 
                         if (indexNumber > media.Episodes.Count)
                         {
-                            _logger.Info("[{0}]集号超过弹幕数，忽略处理. [{1}]{2} 集号: {3} 弹幕数：{4}", scraper.Name, season.Name, fileName, indexNumber, media.Episodes.Count);
+                            _logger.Debug("[{0}]集号超过弹幕数，忽略处理. [{1}]{2} 集号: {3} 弹幕数：{4}", scraper.Name, season.Name, fileName, indexNumber, media.Episodes.Count);
                             continue;
                         }
 
                         // 特典或extras影片不处理（动画经常会放在季文件夹下）
                         if (episode.ParentIndexNumber is null or 0)
                         {
-                            _logger.Info("[{0}]缺少季号，可能是特典或extras影片，忽略处理. [{1}]{2}", scraper.Name, season.Name, fileName);
+                            _logger.Debug("[{0}]缺少季号，可能是特典或extras影片，忽略处理. [{1}]{2}", scraper.Name, season.Name, fileName);
                             continue;
                         }
 

@@ -122,9 +122,6 @@ namespace Emby.Plugin.Danmu
 
         public async Task<IEnumerable<RemoteSubtitleInfo>> Search(SubtitleSearchRequest request, CancellationToken cancellationToken)
         {
-            _logger.Info("弹幕搜索开始 Search: MediaPath={0}, SeriesName={1}, Language={2}",
-                request.MediaPath, request.SeriesName, request.Language);
-
             if (request.Language == "zh-CN" || request.Language == "zh-TW" || request.Language == "zh-HK")
             {
                 request.Language = "chi";
@@ -147,17 +144,12 @@ namespace Emby.Plugin.Danmu
 
             if (item == null)
             {
-                _logger.Info("弹幕搜索: 未找到对应的媒体项 MediaPath={0}", request.MediaPath);
                 return list;
             }
-
-            _logger.Info("弹幕搜索: 找到媒体项 ItemId={0}, Name={1}, Type={2}", 
-                item.Id, item.Name, item.GetType().Name);
 
             // 媒体库未启用就不处理
             if (_libraryManagerEventsHelper != null && _libraryManagerEventsHelper.IsIgnoreItem(item))
             {
-                _logger.Info("弹幕搜索: 媒体库已关闭danmu插件，跳过处理 ItemId={0}, Name={1}", item.Id, item.Name);
                 return list;
             }
 
@@ -172,26 +164,9 @@ namespace Emby.Plugin.Danmu
             if (allScrapers == null || allScrapers.Count == 0)
             {
                 _logger.Warn("弹幕搜索: 没有可用的弹幕源");
-                _logger.Warn("弹幕搜索: ScraperManager 状态 - _scraperManager={0}, Plugin.Instance={1}, Configuration={2}", 
-                    _scraperManager != null ? "非空" : "null",
-                    Plugin.Instance != null ? "非空" : "null",
-                    Plugin.Instance?.Configuration != null ? "非空" : "null");
-                if (Plugin.Instance?.Configuration?.Scrapers != null)
-                {
-                    _logger.Warn("弹幕搜索: 配置中的 Scrapers 数量={0}", Plugin.Instance.Configuration.Scrapers.Length);
-                    foreach (var config in Plugin.Instance.Configuration.Scrapers)
-                    {
-                        _logger.Warn("弹幕搜索: 配置项 - Name={0}, Enable={1}", config.Name, config.Enable);
-                    }
-                }
                 return list;
             }
 
-            _logger.Info("弹幕搜索: 开始搜索，共 {0} 个弹幕源", allScrapers.Count);
-            foreach (var scraper in allScrapers)
-            {
-                _logger.Info("弹幕搜索: 可用弹幕源 - {0}", scraper.Name);
-            }
             var searchTasks = allScrapers.Select(async scraper =>
             {
                 try
@@ -252,9 +227,6 @@ namespace Emby.Plugin.Danmu
             {
                 list.AddRange(subtitles);
             }
-
-            _logger.Info("弹幕搜索: 搜索完成，共找到 {0} 个结果 ItemId={1}, Name={2}", 
-                list.Count, item.Id, item.Name);
 
             return list;
         }
