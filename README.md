@@ -1,8 +1,8 @@
 # emby-plugin-danmu
 
-[![releases](https://img.shields.io/github/v/release/cxfksword/emby-plugin-danmu)](https://github.com/cxfksword/emby-plugin-danmu/releases)
-[![emby](https://img.shields.io/badge/emby-10.10.x|10.11.x-lightgrey?logo=emby)](https://github.com/cxfksword/emby-plugin-danmu/releases)
-[![LICENSE](https://img.shields.io/github/license/cxfksword/emby-plugin-danmu)](https://github.com/cxfksword/emby-plugin-danmu/main/LICENSE) 
+[![releases](https://img.shields.io/github/v/release/0xZzOrz/emby-plugin-danmu)](https://github.com/0xZzOrz/emby-plugin-danmu/releases)
+[![emby](https://img.shields.io/badge/emby-4.9.1.90-lightgrey?logo=emby)](https://github.com/cxfksword/emby-plugin-danmu/releases)
+[![LICENSE](https://img.shields.io/github/license/cxfksword/emby-plugin-danmu)](https://github.com/0xZzOrz/emby-plugin-danmu/blob/main/LICENSE) 
 
 Emby 弹幕自动下载插件（基于 .NET 8，适配 Emby 4.9+），已支持的弹幕来源：B站，弹弹play，优酷，爱奇艺，腾讯视频，芒果TV，弹幕API。
 
@@ -95,9 +95,9 @@ dotnet publish --configuration=Release Emby.Plugin.Danmu/Emby.Plugin.Danmu.cspro
 
 [downkyi](https://github.com/leiurayer/downkyi)
 
-## 请喝咖啡
-<img src="./doc/image/支付宝.jpg"  width="100px" />
+[cxfksword](https://github.com/cxfksword/jellyfin-plugin-danmu)
 
+[fengymi](https://github.com/fengymi/emby-plugin-danmu)
 
 ## 免责声明
 
